@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flip7 × Balatro</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<!-- MENU PRINCIPAL -->
+<div id="screen-menu" class="screen screen-menu" style="display:none">
+  <div class="menu-bg-grid"></div>
+  <div class="menu-content">
+    <div class="menu-logo">
+      <span class="menu-logo-flip">FLIP7</span>
+      <span class="menu-logo-x">×</span>
+      <span class="menu-logo-balatro">BALATRO</span>
+    </div>
+    <div class="menu-buttons">
+      <button class="btn btn-primary menu-btn" onclick="startGame()">Jogar</button>
+      <button class="btn menu-btn" onclick="showTutorial()">Tutorial</button>
+      <button class="btn menu-btn menu-btn-quit" onclick="quitGame()">Sair</button>
+    </div>
+    <div class="menu-version">v0.1 — alpha</div>
+  </div>
+</div>
+
+<!-- TUTORIAL -->
+<div id="screen-tutorial" class="screen screen-tutorial" style="display:none">
+  <div class="tut-header">
+    <span class="tut-title">Como jogar</span>
+    <button class="btn tut-close" onclick="showMenu()">← Menu</button>
+  </div>
+  <div class="tut-steps" id="tut-steps"></div>
+  <div class="tut-nav">
+    <button class="btn" id="tut-prev" onclick="tutPrev()">← Anterior</button>
+    <span class="tut-counter" id="tut-counter">1 / 7</span>
+    <button class="btn btn-primary" id="tut-next" onclick="tutNext()">Próximo →</button>
+  </div>
+</div>
+
+<!-- GAME -->
+<div id="screen-game" class="screen" style="display:none">
+  <div class="top-bar">
+    <div class="stat-box"><div class="stat-label">Round</div><div class="stat-value" id="ui-round">1/8</div></div>
+    <div class="stat-box"><div class="stat-label">Mão</div><div class="stat-value" id="ui-hand">1/5</div></div>
+    <div class="stat-box"><div class="stat-label">Meta</div><div class="stat-value accent" id="ui-goal">30</div></div>
+    <div class="stat-box"><div class="stat-label">Score</div><div class="stat-value" id="ui-score">0</div></div>
+    <div class="stat-box"><div class="stat-label">Dinheiro</div><div class="stat-value accent" id="ui-money">$4</div></div>
+    <div class="stat-box"><div class="stat-label">Flip7s</div><div class="stat-value" id="ui-flip7">0</div></div>
+  </div>
+  <div class="progress-wrap">
+    <div class="progress-track"><div class="progress-fill" id="ui-progress-bar"></div></div>
+    <span class="progress-label" id="ui-progress-label">0 / 30</span>
+  </div>
+  <div class="scoring-bar">
+    <span class="lbl">chips</span><span class="chips-val" id="ui-chips">0</span>
+    <span class="sep">×</span>
+    <span class="lbl">mult</span><span class="mult-val" id="ui-mult">1</span>
+    <span class="sep">=</span>
+    <span class="live-val" id="ui-livescore">0</span>
+  </div>
+  <div class="table-area" id="ui-table">
+    <span class="empty-hint">Clique em Cavar para puxar uma carta</span>
+  </div>
+  <div class="piles-row">
+    <div class="pile-block">
+      <div class="pile-label">Deck</div>
+      <div class="pile-box"><span class="pile-count" id="ui-deck-count">32</span><span class="pile-sub">cartas</span></div>
+    </div>
+    <div class="pile-block">
+      <div class="pile-label">Descarte</div>
+      <div class="pile-box"><span class="pile-count" id="ui-disc-count">0</span><span class="pile-sub">cartas</span></div>
+    </div>
+    <div class="deck-info-wrap" id="ui-deck-info"></div>
+  </div>
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+    <div class="pips-row" id="ui-pips"></div>
+  </div>
+  <div class="jokers-section">
+    <div class="jokers-label">Jokers</div>
+    <div class="jokers-row" id="ui-jokers"><span class="joker-empty">Sem jokers — compre na loja</span></div>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-primary" id="btn-draw"    onclick="onDraw()">Cavar</button>
+    <button class="btn btn-stop"    id="btn-stop"    onclick="onStop()">Parar</button>
+    <button class="btn btn-amber"   id="btn-discard" onclick="onDiscard()">Descartar topo</button>
+    <button class="btn btn-next"    id="btn-next"    onclick="onNext()">Próxima mão</button>
+  </div>
+  <div class="log-wrap"><div id="ui-log"></div></div>
+  <div style="text-align:center;padding-top:4px;">
+    <button class="btn menu-link-btn" onclick="confirmMenu()">← Menu</button>
+  </div>
+</div>
+
+<!-- SHOP -->
+<div id="screen-shop" class="screen" style="display:none">
+  <div class="shop-header">
+    <span class="shop-title">Loja</span>
+    <span class="shop-meta">
+      Round <span id="shop-round">—</span> completo ·
+      <span id="shop-score">—</span>/<span id="shop-goal">—</span> pts ·
+      <span id="shop-money" style="color:var(--accent)">$0</span>
+    </span>
+  </div>
+  <div>
+    <div class="shop-section-title">Jokers ativos</div>
+    <div class="jokers-row" id="shop-jokers"><span class="joker-empty">Sem jokers</span></div>
+  </div>
+  <div>
+    <div class="shop-section-title">Cartas &amp; Upgrades de baralho</div>
+    <div class="shop-row" id="shop-row-cards"></div>
+  </div>
+  <div>
+    <div class="shop-section-title">Jokers</div>
+    <div class="shop-row" id="shop-row-jokers"></div>
+  </div>
+  <div>
+    <div class="shop-section-title">Upgrades</div>
+    <div class="shop-row" id="shop-row-upgrades"></div>
+  </div>
+  <div class="shop-pending" id="shop-pending" style="display:none">
+    <div class="shop-pending-text">
+      <strong id="shop-pending-name"></strong> — <span id="shop-pending-desc"></span>
+    </div>
+    <span class="shop-pending-cancel" onclick="cancelPending()">cancelar</span>
+  </div>
+  <div>
+    <div class="shop-section-title">
+      Seu baralho (<span id="shop-deck-count"></span> cartas)
+      <span style="color:var(--text3);font-weight:400"> — ✦◈◉◌⟡ = edição · ●◆★ = selo</span>
+    </div>
+    <div class="shop-deck-wrap" id="shop-deck"></div>
+  </div>
+  <button class="btn btn-primary" onclick="leaveShop()">
+    Continuar para Round <span id="shop-next-round"></span> →
+  </button>
+</div>
+
+<!-- END -->
+<div id="screen-end" class="screen" style="display:none">
+  <div class="end-title"    id="end-title">Game Over</div>
+  <div class="end-subtitle" id="end-subtitle"></div>
+  <div class="end-score"    id="end-score">0</div>
+  <div class="end-meta"     id="end-total"></div>
+  <div class="end-meta"     id="end-flip7s"></div>
+  <div class="end-btns">
+    <button class="btn btn-primary" onclick="onRestart()">Jogar novamente</button>
+    <button class="btn" onclick="showMenu()">Menu principal</button>
+  </div>
+</div>
+
+<script src="game.js"></script>
+<script src="ui.js"></script>
+<script>showMenu();</script>
+</body>
+</html>
