@@ -52,6 +52,7 @@ function createGameState() {
     handOver: false, roundWon: false, roundWonHandsBonus: 0,
     blueSealCount: 0, flip5Done: false,
     secondChance: false,
+    permanentMult: 0,
     jokers: [], log: [],
   };
 }
@@ -99,8 +100,9 @@ function initRound(state) {
 function startHand(state) {
   state.table = [];
   state.seen = new Set();
-  state.chips = 0; state.mult = 1; state.mustDraw = 0;
+  state.chips = 0; state.mult = 1 + state.permanentMult; state.mustDraw = 0;
   state.handOver = false; state.blueSealCount = 0; state.flip5Done = false;
+  state.secondChance = false;
   addLog(state, `— Mão ${state.handNum} (deck:${state.deck.length} desc:${state.discardPile.length}) —`);
 }
 
@@ -250,7 +252,7 @@ function endHand(state, reason, bustCard) {
 
   state.roundScore += earned;
   state.totalScore += earned;
-  state.handsLeft--;
+  if (reason !== 'freeze') state.handsLeft--;
   if (state.roundScore >= state.goal) state.roundWon = true;
   return { result: reason, earned, bustCard };
 }
@@ -258,12 +260,12 @@ function endHand(state, reason, bustCard) {
 function applyJokerEndHand(joker, state, earned, reason) {
   if (joker.id === 'joker_greedy'   && reason !== 'bust')   return earned + 10;
   if (joker.id === 'joker_flip7fan' && reason === 'flip7')  return earned * 2;
-  if (joker.id === 'joker_stoic'    && reason === 'stop' && state.table.length === 1)  { addLog(state, `🗿 Estoico: +1 mult!`); return earned + state.chips; }
+  if (joker.id === 'joker_stoic'    && reason === 'stop' && state.table.filter(c => c.kind === 'number').length === 1)  { state.permanentMult += 1; addLog(state, `🗿 Estoico: +1 mult permanente!`); return earned + state.chips; }
   if (joker.id === 'joker_phoenix'  && reason === 'bust')   { state.roundScore += 5; return 5; }
   if (joker.id === 'joker_banker'   && reason !== 'bust')   { state.money += 1; addLog(state, `💰 Banqueiro: +$1`); }
   if (joker.id === 'joker_pentacle' && state.flip5Done)      return earned + 15;
   if (joker.id === 'joker_catalyst' && state.flip5Done)      return earned * 2;
-  if (joker.id === 'joker_accumulator' && state.flip5Done)  { state.mult += 1; addLog(state, `⚡ Acumulador: +1 mult permanente!`); }
+  if (joker.id === 'joker_accumulator' && state.flip5Done)  { state.permanentMult += 1; addLog(state, `⚡ Acumulador: +1 mult permanente!`); }
   return earned;
 }
 
@@ -300,7 +302,7 @@ const SHOP_CATALOG = [
   // ── JOKERS ──
   { id: 'joker_greedy',   type: 'joker', name: 'Avarento',   desc: '+10 pts em toda mão não-bust',      cost: 6, rarity: 'common' },
   { id: 'joker_flip7fan', type: 'joker', name: 'Fanático',   desc: 'Flip7 vale ×2',                     cost: 8, rarity: 'uncommon' },
-  { id: 'joker_stoic',    type: 'joker', name: 'Estoico',      desc: 'Parou com exatamente 1 carta → +1 mult', cost: 5, rarity: 'common' },
+  { id: 'joker_stoic',    type: 'joker', name: 'Estoico',      desc: 'Parou com exatamente 1 carta numérica → +1 mult permanente', cost: 5, rarity: 'common' },
   { id: 'joker_phoenix',  type: 'joker', name: 'Fênix',      desc: 'Bust gera +5 pts',                  cost: 5, rarity: 'common' },
   { id: 'joker_banker',   type: 'joker', name: 'Banqueiro',  desc: 'Toda mão jogada +$1',               cost: 6, rarity: 'uncommon' },
   { id: 'joker_pentacle', type: 'joker', name: 'Pentâculo',  desc: 'Flip5 → +15 pts',                   cost: 6, rarity: 'common' },
@@ -326,8 +328,6 @@ const SHOP_CATALOG = [
   { id: 'extra_chips',  type: 'special', name: '+ Chips',   desc: 'Adiciona 1 carta +5 chips ao baralho', cost: 4, kind: 'chips', value: 5, rarity: 'common' },
   { id: 'extra_mult',   type: 'special', name: '+ Mult',    desc: 'Adiciona 1 carta +1 mult ao baralho',  cost: 5, kind: 'mult',  value: 1, rarity: 'uncommon' },
   { id: 'second_chance', type: 'special', name: 'Second Chance', desc: 'Ao bustar, cancela o bust uma vez por mão', cost: 6, kind: 'sc', rarity: 'uncommon' },
-  // Remoção
-  { id: 'remove', type: 'remove', name: 'Remover carta', desc: 'Remove uma carta do baralho',           cost: 3, rarity: 'common' },
 
   // ── UPGRADES (fileira 3) ──
   { id: 'upgrade_chips', type: 'upgrade', name: '+5 Chips', desc: 'Carta +chips do baralho vale +5',   cost: 3, rarity: 'common' },
@@ -345,8 +345,13 @@ const SHOP_CATALOG = [
 function generateShop(state) {
   const owned = state.jokers.map(j => j.id);
 
-  // Fileira 1: 2 packs/cartas (card, pack, special, remove)
-  const packPool = SHOP_CATALOG.filter(i => ['card','pack','special','remove'].includes(i.type));
+  // Fileira 1: 2 packs/cartas (card, pack, special) — só números que o player não tem
+  const ownedNumbers = new Set(state.fullDeck.filter(c => c.kind === 'number').map(c => c.value));
+  const packPool = SHOP_CATALOG.filter(i =>
+    i.type === 'special' ||
+    i.type === 'pack' ||
+    (i.type === 'card' && !ownedNumbers.has(i.value))
+  );
   const packRow = pickN(packPool.flatMap(i => i.rarity==='common'?[i,i,i]:i.rarity==='uncommon'?[i,i]:[i]), 2);
 
   // Fileira 2: 2 jokers não comprados
@@ -382,8 +387,9 @@ function buyItem(state, item, targetCardId) {
     return { result: 'ok' };
   }
   if (item.type === 'card') {
-    state.fullDeck.push({ kind: 'number', value: item.value, edition: null, seal: null, id: `${item.value}_b_${Date.now()}` });
-    addLog(state, `+carta ${item.value} ao baralho`);
+    for (let i = 0; i < item.value; i++)
+      state.fullDeck.push({ kind: 'number', value: item.value, edition: null, seal: null, id: `${item.value}_b_${Date.now()}_${i}` });
+    addLog(state, `+${item.value}× carta ${item.value} ao baralho (regra NxN)`);
     return { result: 'ok' };
   }
   if (item.type === 'pack') {

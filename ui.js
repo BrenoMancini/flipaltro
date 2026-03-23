@@ -221,7 +221,7 @@ function buildScoringSequence(state) {
   for(const joker of state.jokers) {
     let desc=null;
     if(joker.id==='joker_greedy'&&reason!=='bust') desc='+10 pts';
-    if(joker.id==='joker_stoic'&&reason==='stop'&&G.table.length===1)  desc='+1 mult';
+    if(joker.id==='joker_stoic'&&reason==='stop'&&G.table.filter(c=>c.kind==='number').length===1)  desc='+1 mult perm';
     if(joker.id==='joker_flip7fan'&&reason==='flip7') desc='×2';
     if(joker.id==='joker_phoenix'&&reason==='bust')   desc='+5 pts';
     if(joker.id==='joker_banker'&&reason!=='bust')    desc='+$1';
@@ -386,6 +386,15 @@ function selectDeckCard(cardId) {
   } else if(result.result==='no_target'){
     showToast('Erro: carta não encontrada','red');
   }
+}
+
+function onRemoveCard() {
+  if(G.money<2){showToast('✗ Sem dinheiro — precisa de $2','red');return;}
+  pendingItem={id:'remove_fixed',type:'remove',name:'Remover carta',cost:2};
+  document.getElementById('shop-pending').style.display='block';
+  document.getElementById('shop-pending-name').textContent='Remover carta ($2)';
+  document.getElementById('shop-pending-desc').textContent='Clique numa carta do baralho abaixo para remover.';
+  document.querySelectorAll('.shop-card').forEach(el=>el.classList.add('selectable'));
 }
 
 function cancelPending() {
