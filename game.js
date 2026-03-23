@@ -18,6 +18,8 @@ function buildStarterDeck() {
   for (let n = 1; n <= 7; n++)
     for (let i = 0; i < n; i++)
       deck.push({ kind: 'number', value: n, edition: null, seal: null, id: `${n}_${i}` });
+  deck.push({ kind: 'number', value: 0, edition: null, seal: null, id: '0_0' });
+  deck.push({ kind: 'number', value: 0, edition: null, seal: null, id: '0_1' });
   deck.push({ kind: 'freeze', edition: null, seal: null, id: 'freeze_0' });
   deck.push({ kind: 'flip2',  edition: null, seal: null, id: 'flip2_0' });
   deck.push({ kind: 'chips',  value: 5, edition: null, seal: null, id: 'chips_0' });
@@ -50,6 +52,7 @@ function createGameState() {
     chips: 0, mult: 1, mustDraw: 0,
     handOver: false, roundWon: false, roundWonHandsBonus: 0,
     blueSealCount: 0, flip5Done: false,
+    secondChance: false,
     jokers: [], log: [],
   };
 }
@@ -158,10 +161,28 @@ function drawCard(state) {
     return { result: 'mult', card };
   }
 
+  // SECOND CHANCE
+  if (card.kind === 'sc') {
+    state.secondChance = true;
+    applyEditionOnDraw(state, card);
+    if (state.mustDraw > 0) state.mustDraw--;
+    addLog(state, `🛡 Second Chance ativado! Próximo bust será cancelado.`);
+    return { result: 'sc', card };
+  }
+
   // NUMBER
   if (card.kind === 'number') {
-    if (card.edition !== 'ghost' && state.seen.has(card.value))
+    if (card.edition !== 'ghost' && state.seen.has(card.value)) {
+      if (state.secondChance) {
+        state.secondChance = false;
+        addLog(state, `🛡 Second Chance! Bust no ${card.value} cancelado!`);
+        // remove a carta duplicada da mesa
+        state.table.pop();
+        state.discardPile.push(card);
+        return { result: 'second_chance', card };
+      }
       return endHand(state, 'bust', card);
+    }
 
     state.seen.add(card.value);
     state.chips += card.value;
@@ -238,8 +259,12 @@ function endHand(state, reason, bustCard) {
 function applyJokerEndHand(joker, state, earned, reason) {
   if (joker.id === 'joker_greedy'   && reason !== 'bust')   return earned + 10;
   if (joker.id === 'joker_flip7fan' && reason === 'flip7')  return earned * 2;
-  if (joker.id === 'joker_stoic'    && reason === 'stop')   return earned + 15;
+  if (joker.id === 'joker_stoic'    && reason === 'stop' && state.table.length === 1)  return earned * 3;
   if (joker.id === 'joker_phoenix'  && reason === 'bust')   { state.roundScore += 5; return 5; }
+  if (joker.id === 'joker_banker'   && reason !== 'bust')   { state.money += 1; addLog(state, `💰 Banqueiro: +$1`); }
+  if (joker.id === 'joker_pentacle' && state.flip5Done)      return earned + 15;
+  if (joker.id === 'joker_catalyst' && state.flip5Done)      return earned * 2;
+  if (joker.id === 'joker_accumulator' && state.flip5Done)  { state.mult += 1; addLog(state, `⚡ Acumulador: +1 mult permanente!`); }
   return earned;
 }
 
@@ -276,9 +301,12 @@ const SHOP_CATALOG = [
   // ── JOKERS ──
   { id: 'joker_greedy',   type: 'joker', name: 'Avarento',   desc: '+10 pts em toda mão não-bust',      cost: 6, rarity: 'common' },
   { id: 'joker_flip7fan', type: 'joker', name: 'Fanático',   desc: 'Flip7 vale ×2',                     cost: 8, rarity: 'uncommon' },
-  { id: 'joker_stoic',    type: 'joker', name: 'Estoico',    desc: '+15 pts ao parar voluntariamente',  cost: 7, rarity: 'common' },
+  { id: 'joker_stoic',    type: 'joker', name: 'Estoico',      desc: 'Parou com exatamente 1 carta → Score ×3', cost: 7, rarity: 'uncommon' },
   { id: 'joker_phoenix',  type: 'joker', name: 'Fênix',      desc: 'Bust gera +5 pts',                  cost: 5, rarity: 'common' },
-  { id: 'joker_banker',   type: 'joker', name: 'Banqueiro',  desc: '+$1 por Flip7 no round',            cost: 6, rarity: 'uncommon' },
+  { id: 'joker_banker',   type: 'joker', name: 'Banqueiro',  desc: 'Toda mão jogada +$1',               cost: 6, rarity: 'uncommon' },
+  { id: 'joker_pentacle', type: 'joker', name: 'Pentâculo',  desc: 'Flip5 → +15 pts',                   cost: 6, rarity: 'common' },
+  { id: 'joker_catalyst', type: 'joker', name: 'Catalisador', desc: 'Flip5 → Score ×2',                 cost: 8, rarity: 'uncommon' },
+  { id: 'joker_accumulator', type: 'joker', name: 'Acumulador', desc: 'Flip5 no run → +1 mult permanente', cost: 9, rarity: 'rare' },
   { id: 'joker_daredevil',type: 'joker', name: 'Temerário',  desc: 'Cada bust +3 mult próxima mão',     cost: 9, rarity: 'rare' },
 
   // ── PACKS DE CARTAS (fileira 1) ──
@@ -298,6 +326,7 @@ const SHOP_CATALOG = [
   { id: 'extra_flip2',  type: 'special', name: '+ Flip2',   desc: 'Adiciona 1 Flip2 ao baralho',       cost: 3,  kind: 'flip2',  rarity: 'common' },
   { id: 'extra_chips',  type: 'special', name: '+ Chips',   desc: 'Adiciona 1 carta +5 chips ao baralho', cost: 4, kind: 'chips', value: 5, rarity: 'common' },
   { id: 'extra_mult',   type: 'special', name: '+ Mult',    desc: 'Adiciona 1 carta +1 mult ao baralho',  cost: 5, kind: 'mult',  value: 1, rarity: 'uncommon' },
+  { id: 'second_chance', type: 'special', name: 'Second Chance', desc: 'Ao bustar, cancela o bust uma vez por mão', cost: 6, kind: 'sc', rarity: 'uncommon' },
   // Remoção
   { id: 'remove', type: 'remove', name: 'Remover carta', desc: 'Remove uma carta do baralho',           cost: 3, rarity: 'common' },
 
@@ -423,6 +452,7 @@ function cardName(card) {
   if (card.kind === 'flip2')  return 'Flip2';
   if (card.kind === 'chips')  return `+${card.value}chips`;
   if (card.kind === 'mult')   return `+${card.value}mult`;
+  if (card.kind === 'sc')     return 'Second Chance';
   return '?';
 }
 

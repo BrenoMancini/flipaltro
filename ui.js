@@ -90,7 +90,7 @@ function showToast(msg, type='green') {
 // ── RENDER ─────────────────────────────────────────────────
 function render() {
   if      (G.phase === 'game')     { showScreen('screen-game');  renderGame(); }
-  else if (G.phase === 'shop')     { showScreen('screen-shop');  try { renderShopFull(); } catch(e) { alert('SHOP ERRO: '+e.message+'\n'+e.stack); } }
+  else if (G.phase === 'shop')     { showScreen('screen-shop');  renderShopFull(); }
   else if (G.phase === 'gameover') { showScreen('screen-end');   renderEnd(false); }
   else if (G.phase === 'win')      { showScreen('screen-end');   renderEnd(true); }
 }
@@ -142,6 +142,7 @@ function renderTable(outcome, bustVal) {
     else if(c.kind==='flip2')  {cls+=' card-flip2';top='+2';sub='flip2';}
     else if(c.kind==='chips')  {cls+=' card-chips';top=`+${c.value}`;sub='chips';}
     else if(c.kind==='mult')   {cls+=' card-mult';top=`+${c.value}`;sub='mult';}
+    else if(c.kind==='sc')     {cls+=' card-freeze';top='🛡';sub='SC';}
     else if(c.kind==='number') {
       const isBust=outcome==='bust'&&c.value===bustVal&&!sf.has(c.value);
       if(isBust) cls+=' card-bust'; else sf.add(c.value);
@@ -174,7 +175,7 @@ function renderPips() {
 function renderJokers(triggeredIds=[]) {
   const el=document.getElementById('ui-jokers');
   if(!G.jokers.length){el.innerHTML='<span class="joker-empty">Sem jokers — compre na loja</span>';return;}
-  const trigL={joker_greedy:'qualquer mão não-bust',joker_flip7fan:'Flip7',joker_stoic:'ao parar',joker_phoenix:'bust',joker_banker:'Flip7',joker_daredevil:'bust'};
+  const trigL={joker_greedy:'qualquer mão não-bust',joker_flip7fan:'Flip7',joker_stoic:'parar com 1 carta',joker_phoenix:'bust',joker_banker:'toda mão',joker_daredevil:'bust',joker_pentacle:'Flip5',joker_catalyst:'Flip5',joker_accumulator:'Flip5'};
   el.innerHTML=G.jokers.map(j=>{
     const triggered=triggeredIds.includes(j.id);
     return `<div class="joker-card${triggered?' joker-triggered':''}">
@@ -220,9 +221,13 @@ function buildScoringSequence(state) {
   for(const joker of state.jokers) {
     let desc=null;
     if(joker.id==='joker_greedy'&&reason!=='bust') desc='+10 pts';
-    if(joker.id==='joker_stoic'&&reason==='stop')  desc='+15 pts';
+    if(joker.id==='joker_stoic'&&reason==='stop'&&G.table.length===1)  desc='×3';
     if(joker.id==='joker_flip7fan'&&reason==='flip7') desc='×2';
     if(joker.id==='joker_phoenix'&&reason==='bust')   desc='+5 pts';
+    if(joker.id==='joker_banker'&&reason!=='bust')    desc='+$1';
+    if(joker.id==='joker_pentacle'&&G.flip5Done)      desc='+15 pts';
+    if(joker.id==='joker_catalyst'&&G.flip5Done)      desc='×2';
+    if(joker.id==='joker_accumulator'&&G.flip5Done)   desc='+1 mult perm';
     if(desc){seq.push({type:'joker',detail:desc,id:joker.id});triggeredIds.push(joker.id);}
   }
   return {seq,triggeredIds};
@@ -416,6 +421,8 @@ function onDraw() {
   else if(result.result==='freeze_ignored'){lastOutcome=null;     lastBustVal=null;}
   else if(result.result==='flip7')         {lastOutcome='flip7win';lastBustVal=null;}
   else if(result.result==='flip5')         {lastOutcome='flip5';  lastBustVal=null;showToast('⭐ FLIP5! +1 mult — continue cavando!');}
+  else if(result.result==='second_chance'){lastOutcome=null;     lastBustVal=null;showToast('🛡 Second Chance! Bust cancelado!');}
+  else if(result.result==='sc')          {lastOutcome=null;     lastBustVal=null;showToast('🛡 Second Chance ativado!');}
   else                                     {lastOutcome=null;     lastBustVal=null;}
   showScreen('screen-game');
   renderGame();
