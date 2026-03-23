@@ -53,6 +53,7 @@ function createGameState() {
     blueSealCount: 0, flip5Done: false,
     secondChance: false,
     permanentMult: 0,
+    removeCost: 2, removeCount: 0,
     jokers: [], log: [],
   };
 }

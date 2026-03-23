@@ -276,6 +276,7 @@ function renderShopFull() {
   document.getElementById('shop-deck-count').textContent = G.fullDeck.length;
   document.getElementById('shop-next-round').textContent = G.round+1;
   renderShopRows(); renderShopDeck(); renderShopJokers();
+  document.getElementById('btn-remove-card').textContent=`Remover carta — $${G.removeCost}`;
   document.getElementById('shop-pending').style.display='none';
 }
 
@@ -379,6 +380,11 @@ function selectDeckCard(cardId) {
     if(el){el.classList.add('just-applied');setTimeout(()=>el.classList.remove('just-applied'),800);}
     const target=G.fullDeck.find(c=>c.id===cardId);
     showToast(`✓ ${it.name} em [${target?cardName(target):'carta'}]`);
+    if(it.id==='remove_fixed'){
+      G.removeCount++;
+      G.removeCost=Math.ceil(2*Math.pow(1.15,G.removeCount));
+      document.getElementById('btn-remove-card').textContent=`Remover carta — $${G.removeCost}`;
+    }
     pendingItem=null;
     document.getElementById('shop-pending').style.display='none';
     document.querySelectorAll('.shop-card').forEach(el=>el.classList.remove('selectable'));
@@ -389,10 +395,11 @@ function selectDeckCard(cardId) {
 }
 
 function onRemoveCard() {
-  if(G.money<2){showToast('✗ Sem dinheiro — precisa de $2','red');return;}
-  pendingItem={id:'remove_fixed',type:'remove',name:'Remover carta',cost:2};
+  const cost=G.removeCost;
+  if(G.money<cost){showToast(`✗ Sem dinheiro — precisa de $${cost}`,'red');return;}
+  pendingItem={id:'remove_fixed',type:'remove',name:'Remover carta',cost:cost};
   document.getElementById('shop-pending').style.display='block';
-  document.getElementById('shop-pending-name').textContent='Remover carta ($2)';
+  document.getElementById('shop-pending-name').textContent=`Remover carta ($${cost})`;
   document.getElementById('shop-pending-desc').textContent='Clique numa carta do baralho abaixo para remover.';
   document.querySelectorAll('.shop-card').forEach(el=>el.classList.add('selectable'));
 }
