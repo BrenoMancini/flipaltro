@@ -382,7 +382,7 @@ function selectDeckCard(cardId) {
     showToast(`✓ ${it.name} em [${target?cardName(target):'carta'}]`);
     if(it.id==='remove_fixed'){
       G.removeCount++;
-      G.removeCost=Math.ceil(2*Math.pow(1.15,G.removeCount));
+      G.removeCost=Math.ceil(2*Math.pow(1.20,G.removeCount));
       document.getElementById('btn-remove-card').textContent=`Remover carta — $${G.removeCost}`;
     }
     pendingItem=null;
