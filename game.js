@@ -19,7 +19,6 @@ function buildStarterDeck() {
     for (let i = 0; i < n; i++)
       deck.push({ kind: 'number', value: n, edition: null, seal: null, id: `${n}_${i}` });
   deck.push({ kind: 'number', value: 0, edition: null, seal: null, id: '0_0' });
-  deck.push({ kind: 'number', value: 0, edition: null, seal: null, id: '0_1' });
   deck.push({ kind: 'freeze', edition: null, seal: null, id: 'freeze_0' });
   deck.push({ kind: 'flip2',  edition: null, seal: null, id: 'flip2_0' });
   deck.push({ kind: 'chips',  value: 5, edition: null, seal: null, id: 'chips_0' });
@@ -259,7 +258,7 @@ function endHand(state, reason, bustCard) {
 function applyJokerEndHand(joker, state, earned, reason) {
   if (joker.id === 'joker_greedy'   && reason !== 'bust')   return earned + 10;
   if (joker.id === 'joker_flip7fan' && reason === 'flip7')  return earned * 2;
-  if (joker.id === 'joker_stoic'    && reason === 'stop' && state.table.length === 1)  return earned * 3;
+  if (joker.id === 'joker_stoic'    && reason === 'stop' && state.table.length === 1)  { addLog(state, `🗿 Estoico: +1 mult!`); return earned + state.chips; }
   if (joker.id === 'joker_phoenix'  && reason === 'bust')   { state.roundScore += 5; return 5; }
   if (joker.id === 'joker_banker'   && reason !== 'bust')   { state.money += 1; addLog(state, `💰 Banqueiro: +$1`); }
   if (joker.id === 'joker_pentacle' && state.flip5Done)      return earned + 15;
@@ -301,7 +300,7 @@ const SHOP_CATALOG = [
   // ── JOKERS ──
   { id: 'joker_greedy',   type: 'joker', name: 'Avarento',   desc: '+10 pts em toda mão não-bust',      cost: 6, rarity: 'common' },
   { id: 'joker_flip7fan', type: 'joker', name: 'Fanático',   desc: 'Flip7 vale ×2',                     cost: 8, rarity: 'uncommon' },
-  { id: 'joker_stoic',    type: 'joker', name: 'Estoico',      desc: 'Parou com exatamente 1 carta → Score ×3', cost: 7, rarity: 'uncommon' },
+  { id: 'joker_stoic',    type: 'joker', name: 'Estoico',      desc: 'Parou com exatamente 1 carta → +1 mult', cost: 5, rarity: 'common' },
   { id: 'joker_phoenix',  type: 'joker', name: 'Fênix',      desc: 'Bust gera +5 pts',                  cost: 5, rarity: 'common' },
   { id: 'joker_banker',   type: 'joker', name: 'Banqueiro',  desc: 'Toda mão jogada +$1',               cost: 6, rarity: 'uncommon' },
   { id: 'joker_pentacle', type: 'joker', name: 'Pentâculo',  desc: 'Flip5 → +15 pts',                   cost: 6, rarity: 'common' },

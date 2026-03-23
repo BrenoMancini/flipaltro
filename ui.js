@@ -221,7 +221,7 @@ function buildScoringSequence(state) {
   for(const joker of state.jokers) {
     let desc=null;
     if(joker.id==='joker_greedy'&&reason!=='bust') desc='+10 pts';
-    if(joker.id==='joker_stoic'&&reason==='stop'&&G.table.length===1)  desc='×3';
+    if(joker.id==='joker_stoic'&&reason==='stop'&&G.table.length===1)  desc='+1 mult';
     if(joker.id==='joker_flip7fan'&&reason==='flip7') desc='×2';
     if(joker.id==='joker_phoenix'&&reason==='bust')   desc='+5 pts';
     if(joker.id==='joker_banker'&&reason!=='bust')    desc='+$1';
