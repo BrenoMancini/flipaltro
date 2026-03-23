@@ -124,7 +124,9 @@ function renderGame() {
   btnNext.style.display = over ? 'block' : 'none';
   if (over) {
     if (G.roundWon) btnNext.textContent = `Meta atingida! +$${G.handsLeft} bônus →`;
-    else btnNext.textContent = G.handsLeft <= 0 ? 'Ver resultado' : 'Próxima mão';
+    else if (G.handsLeft <= 0) btnNext.textContent = 'Ver resultado';
+    else if (G.lastReason === 'freeze') btnNext.textContent = 'Freeze! Mão grátis → continuar';
+    else btnNext.textContent = 'Próxima mão';
   }
   renderLog();
 }

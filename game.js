@@ -49,7 +49,7 @@ function createGameState() {
     deck: [], discardPile: [], table: [],
     seen: new Set(),
     chips: 0, mult: 1, mustDraw: 0,
-    handOver: false, roundWon: false, roundWonHandsBonus: 0,
+    handOver: false, lastReason: null, roundWon: false, roundWonHandsBonus: 0,
     blueSealCount: 0, flip5Done: false,
     secondChance: false,
     permanentMult: 0,
@@ -102,7 +102,7 @@ function startHand(state) {
   state.table = [];
   state.seen = new Set();
   state.chips = 0; state.mult = 1 + state.permanentMult; state.mustDraw = 0;
-  state.handOver = false; state.blueSealCount = 0; state.flip5Done = false;
+  state.handOver = false; state.lastReason = null; state.blueSealCount = 0; state.flip5Done = false;
   state.secondChance = false;
   addLog(state, `— Mão ${state.handNum} (deck:${state.deck.length} desc:${state.discardPile.length}) —`);
 }
@@ -228,6 +228,7 @@ function stopHand(state) {
 
 function endHand(state, reason, bustCard) {
   state.handOver = true;
+  state.lastReason = reason;
   state.discardPile.push(...state.table);
   let earned = 0;
 
@@ -287,7 +288,7 @@ function nextHand(state) {
     }
     return;
   }
-  state.handNum++;
+  if (state.lastReason !== 'freeze') state.handNum++;
   startHand(state);
 }
 
