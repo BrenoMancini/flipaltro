@@ -111,7 +111,7 @@
     <div class="jokers-row" id="shop-jokers"><span class="joker-empty">Sem jokers</span></div>
   </div>
   <div>
-    <div class="shop-section-title">Cartas &amp; Upgrades de baralho</div>
+    <div class="shop-section-title">Boosters / Packs</div>
     <div class="shop-row" id="shop-row-cards"></div>
   </div>
   <div>
@@ -153,6 +153,19 @@
   <div class="end-btns">
     <button class="btn btn-primary" onclick="onRestart()">Jogar novamente</button>
     <button class="btn" onclick="showMenu()">Menu principal</button>
+  </div>
+</div>
+
+<!-- BOOSTER SCREEN -->
+<div id="screen-booster" class="screen" style="display:none">
+  <div class="booster-header">
+    <div class="booster-title" id="booster-title">Pack</div>
+    <div class="booster-subtitle" id="booster-subtitle">Escolha 1</div>
+  </div>
+  <div class="booster-grid" id="booster-grid"></div>
+  <div class="booster-actions">
+    <button class="btn btn-amber" onclick="cancelBooster()">Cancelar (reembolso)</button>
+    <button class="btn btn-primary" id="booster-confirm" onclick="confirmBooster()" disabled>Confirmar</button>
   </div>
 </div>
 

@@ -274,7 +274,7 @@ function applyJokerEndHand(joker, state, earned, reason) {
 function nextHand(state) {
   if (state.roundWon) {
     const hb = state.handsLeft;
-    state.money += moneyFromRound(state) + hb;
+    state.money += moneyFromRound(state);
     state.roundWonHandsBonus = hb;
     state.phase = state.round >= GAME_CONFIG.TOTAL_ROUNDS ? 'win' : 'shop';
     return;
@@ -293,7 +293,8 @@ function nextHand(state) {
 }
 
 function moneyFromRound(state) {
-  return 3 + Math.floor(Math.max(0, state.roundScore - state.goal) / 20);
+  const excess = Math.floor(Math.max(0, state.roundScore - state.goal) / 10);
+  return Math.min(12, 5 + state.handsLeft + excess);
 }
 
 // ============================================================
@@ -319,11 +320,22 @@ const SHOP_CATALOG = [
   { id: 'card_10',  type: 'card',  name: 'Carta 10',     desc: 'Adiciona 10 ao baralho (1 cópia)',     cost: 6,  value: 10, count: 1, rarity: 'uncommon' },
   { id: 'card_11',  type: 'card',  name: 'Carta 11',     desc: 'Adiciona 11 ao baralho (1 cópia)',     cost: 7,  value: 11, count: 1, rarity: 'rare' },
   { id: 'card_12',  type: 'card',  name: 'Carta 12',     desc: 'Adiciona 12 ao baralho (1 cópia)',     cost: 8,  value: 12, count: 1, rarity: 'rare' },
-  // Packs de cópias
-  { id: 'pack_7x3', type: 'pack',  name: 'Pack ×7',      desc: '+3 cópias do 7 no baralho',            cost: 5,  value: 7,  count: 3, rarity: 'common' },
-  { id: 'pack_6x3', type: 'pack',  name: 'Pack ×6',      desc: '+3 cópias do 6 no baralho',            cost: 4,  value: 6,  count: 3, rarity: 'common' },
-  { id: 'pack_5x3', type: 'pack',  name: 'Pack ×5',      desc: '+3 cópias do 5 no baralho',            cost: 3,  value: 5,  count: 3, rarity: 'common' },
-  { id: 'pack_8x2', type: 'pack',  name: 'Pack ×8',      desc: '+2 cópias do 8 no baralho',            cost: 6,  value: 8,  count: 2, rarity: 'uncommon' },
+  // ── BOOSTERS UNO (carta única c/ edição/selo) ──
+  { id:'booster_uno_common',   type:'booster', subtype:'uno', name:'Pack Uno',        desc:'3 cartas únicas — escolha 1',              cost:4,  rarity:'common',   picks:3, choose:1, guaranteed_rare:false },
+  { id:'booster_uno_uncommon', type:'booster', subtype:'uno', name:'Pack Uno+',       desc:'3 cartas c/ edições — escolha 1',          cost:7,  rarity:'uncommon', picks:3, choose:1, guaranteed_rare:false },
+  { id:'booster_uno_rare',     type:'booster', subtype:'uno', name:'Jumbo Uno',       desc:'5 cartas — escolha 2, 1 raro garantido',   cost:12, rarity:'rare',     picks:5, choose:2, guaranteed_rare:true  },
+  // ── BOOSTERS PACK (NxN cópias) ──
+  { id:'booster_pack_common',   type:'booster', subtype:'pack', name:'Pack Clássico',  desc:'3 opções NxN — escolha 1',                cost:5,  rarity:'common',   picks:3, choose:1 },
+  { id:'booster_pack_uncommon', type:'booster', subtype:'pack', name:'Pack Clássico+', desc:'3 opções NxN — escolha 1',                cost:8,  rarity:'uncommon', picks:3, choose:1 },
+  { id:'booster_pack_rare',     type:'booster', subtype:'pack', name:'Jumbo Clássico', desc:'5 opções NxN — escolha 2',                cost:13, rarity:'rare',     picks:5, choose:2 },
+  // ── BOOSTERS COMBO (cópias assimétricas c/ bônus) ──
+  { id:'booster_combo_common',   type:'booster', subtype:'combo', name:'Pack Combo',   desc:'até 2 cópias c/ edição ou selo',          cost:6,  rarity:'common',   picks:3, choose:1, max_copies:2 },
+  { id:'booster_combo_uncommon', type:'booster', subtype:'combo', name:'Pack Combo+',  desc:'até 3 cópias c/ edição ou selo',          cost:9,  rarity:'uncommon', picks:3, choose:1, max_copies:3 },
+  { id:'booster_combo_rare',     type:'booster', subtype:'combo', name:'Jumbo Combo',  desc:'até 3 cópias c/ edição E selo',           cost:14, rarity:'rare',     picks:5, choose:2, max_copies:3 },
+  // ── BOOSTERS JOKERS ──
+  { id:'booster_jok_common',   type:'booster', subtype:'jokers', name:'Pack de Jokers',       desc:'2 jokers — escolha 1',              cost:5,  rarity:'common',   picks:2, choose:1, guaranteed_rare:false },
+  { id:'booster_jok_uncommon', type:'booster', subtype:'jokers', name:'Pack de Jokers+',      desc:'2 jokers qualquer rar — escolha 1', cost:8,  rarity:'uncommon', picks:2, choose:1, guaranteed_rare:false },
+  { id:'booster_jok_rare',     type:'booster', subtype:'jokers', name:'Jumbo Pack de Jokers', desc:'3 jokers — escolha 1, 1 raro grtd', cost:13, rarity:'rare',     picks:3, choose:1, guaranteed_rare:true  },
   // Cartas especiais extras
   { id: 'extra_freeze', type: 'special', name: '+ Freeze',  desc: 'Adiciona 1 Freeze ao baralho',      cost: 3,  kind: 'freeze', rarity: 'common' },
   { id: 'extra_flip2',  type: 'special', name: '+ Flip2',   desc: 'Adiciona 1 Flip2 ao baralho',       cost: 3,  kind: 'flip2',  rarity: 'common' },
@@ -344,17 +356,103 @@ const SHOP_CATALOG = [
   { id: 'seal_gold', type: 'upgrade', name: 'Selo Dourado', desc: '★ No Flip7, carta ×Mult',            cost: 10, seal: 'gold', rarity: 'rare' },
 ];
 
+function generateBoosterContents(item, state) {
+  const ALL_NUMS = [0,1,2,3,4,5,6,7,8,9,10,11,12];
+  const owned = new Set(state.fullDeck.filter(c=>c.kind==='number').map(c=>c.value));
+
+  if (item.subtype === 'uno') {
+    const edPools = {
+      common:   [null,null,null,'gold','gold','relic'],
+      uncommon: [null,null,'gold','gleam','relic','ghost'],
+      rare:     [null,'gold','gleam','relic','ghost','prism'],
+    };
+    const sealPools = {
+      common:   [null,null,null,null,'red','blue'],
+      uncommon: [null,null,null,'red','blue','gold'],
+      rare:     [null,null,'red','blue','gold','gold'],
+    };
+    const notOwned = ALL_NUMS.filter(n=>!owned.has(n));
+    const pool = notOwned.length >= item.picks ? notOwned : [...notOwned,...ALL_NUMS.filter(n=>owned.has(n))];
+    const cards=[]; const used=new Set(); let rareDone=false;
+    while(cards.length < item.picks) {
+      const avail=pool.filter(v=>!used.has(v));
+      if(!avail.length) break;
+      const val=avail[Math.floor(Math.random()*avail.length)];
+      used.add(val);
+      let ed=edPools[item.rarity][Math.floor(Math.random()*edPools[item.rarity].length)];
+      let seal=sealPools[item.rarity][Math.floor(Math.random()*sealPools[item.rarity].length)];
+      if(item.guaranteed_rare && !rareDone && cards.length===item.picks-1){
+        ed=['prism','ghost'][Math.floor(Math.random()*2)]; rareDone=true;
+      }
+      cards.push({kind:'number',value:val,edition:ed,seal,id:`${val}_b_${Date.now()}_${cards.length}`,_isNew:!owned.has(val)});
+    }
+    return cards;
+  }
+
+  if (item.subtype === 'pack') {
+    // Oferece valores para adicionar NxN cópias (N cópias do número N)
+    const pool = shuffle([...ALL_NUMS.filter(n=>n>0)]).slice(0, item.picks);
+    return pool.map(n=>({kind:'number',value:n,count:n,_isPack:true,id:`pack_${n}_${Date.now()}`}));
+  }
+
+  if (item.subtype === 'combo') {
+    const maxCopies = item.max_copies || 2;
+    const edPool  = item.rarity==='rare' ? ['gold','gleam','relic','ghost','prism'] : ['gold','gleam','relic'];
+    const sealPool = item.rarity==='rare' ? ['red','blue','gold'] : ['red','blue'];
+    const vals = shuffle([...ALL_NUMS.filter(n=>n>0)]).slice(0, item.picks);
+    return vals.map(val => {
+      const copies = 1 + Math.floor(Math.random() * maxCopies);
+      return Array.from({length:copies}, (_,i) => {
+        let ed=null, seal=null;
+        if(item.rarity==='rare') {
+          ed   = edPool[Math.floor(Math.random()*edPool.length)];
+          seal = sealPool[Math.floor(Math.random()*sealPool.length)];
+        } else {
+          if(Math.random()<0.5) ed   = edPool[Math.floor(Math.random()*edPool.length)];
+          else                  seal = sealPool[Math.floor(Math.random()*sealPool.length)];
+        }
+        return {kind:'number',value:val,edition:ed,seal,id:`${val}_combo_${Date.now()}_${i}`};
+      });
+    });
+  }
+
+  // jokers
+  const ownedIds=state.jokers.map(j=>j.id);
+  const allowed={common:['common','uncommon'],uncommon:['common','uncommon','rare'],rare:['common','uncommon','rare']}[item.rarity];
+  let pool=SHOP_CATALOG.filter(i=>i.type==='joker'&&!ownedIds.includes(i.id)&&allowed.includes(i.rarity));
+  if(item.guaranteed_rare && !pool.some(i=>i.rarity==='rare'))
+    pool=SHOP_CATALOG.filter(i=>i.type==='joker'&&i.rarity==='rare');
+  return pickN(pool.flatMap(i=>i.rarity==='common'?[i,i,i]:i.rarity==='uncommon'?[i,i]:[i]),item.picks);
+}
+
+function applyBoosterChoice(state, item, chosenIndices, contents) {
+  for(const idx of chosenIndices) {
+    const pick=contents[idx];
+    if(item.subtype==='uno') {
+      state.fullDeck.push({kind:'number',value:pick.value,edition:pick.edition,seal:pick.seal,id:pick.id});
+      addLog(state,`Uno: +${pick.value}${pick.edition?' ['+pick.edition+']':''}${pick.seal?' ('+pick.seal+')':''}`);
+    } else if(item.subtype==='pack') {
+      for(let i=0;i<pick.count;i++)
+        state.fullDeck.push({kind:'number',value:pick.value,edition:null,seal:null,id:`${pick.value}_pk_${Date.now()}_${i}`});
+      addLog(state,`Pack: +${pick.count}×${pick.value} ao baralho`);
+    } else if(item.subtype==='combo') {
+      // pick is an array of cards
+      for(const card of pick)
+        state.fullDeck.push({kind:'number',value:card.value,edition:card.edition,seal:card.seal,id:card.id});
+      addLog(state,`Combo: +${pick.length}×${pick[0].value}${pick.map(c=>(c.edition?'['+c.edition+']':'')+(c.seal?'('+c.seal+')':'')).join(' ')}`);
+    } else {
+      state.jokers.push({id:pick.id,name:pick.name,desc:pick.desc});
+      addLog(state,`Booster: joker ${pick.name}`);
+    }
+  }
+}
+
 function generateShop(state) {
   const owned = state.jokers.map(j => j.id);
 
-  // Fileira 1: 2 packs/cartas (card, pack, special) — só números que o player não tem
-  const ownedNumbers = new Set(state.fullDeck.filter(c => c.kind === 'number').map(c => c.value));
-  const packPool = SHOP_CATALOG.filter(i =>
-    i.type === 'special' ||
-    i.type === 'pack' ||
-    (i.type === 'card' && !ownedNumbers.has(i.value))
-  );
-  const packRow = pickN(packPool.flatMap(i => i.rarity==='common'?[i,i,i]:i.rarity==='uncommon'?[i,i]:[i]), 2);
+  // Fileira 1: 2 boosters
+  const boosterPool = SHOP_CATALOG.filter(i => i.type === 'booster');
+  const packRow = pickN(boosterPool.flatMap(i => i.rarity==='common'?[i,i,i]:i.rarity==='uncommon'?[i,i]:[i]), 2);
 
   // Fileira 2: 2 jokers não comprados
   const jokerPool = SHOP_CATALOG.filter(i => i.type === 'joker' && !owned.includes(i.id));
@@ -383,6 +481,10 @@ function buyItem(state, item, targetCardId) {
   if (state.money < item.cost) return { result: 'no_money' };
   state.money -= item.cost;
 
+  if (item.type === 'booster') {
+    const contents = generateBoosterContents(item, state);
+    return { result: 'open_booster', contents, item };
+  }
   if (item.type === 'joker') {
     state.jokers.push({ id: item.id, name: item.name, desc: item.desc });
     addLog(state, `Comprou joker: ${item.name}`);

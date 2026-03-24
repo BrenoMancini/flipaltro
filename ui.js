@@ -3,6 +3,7 @@
 let G = null;
 let shopItems = [];
 let pendingItem = null;
+let boosterState = { active:false, item:null, contents:[], chosen:new Set(), key:null };
 let toastTimer = null;
 let lastOutcome = null;
 let lastBustVal = null;
@@ -11,7 +12,7 @@ let tutStep = 0;
 
 // ── SCREENS ───────────────────────────────────────────────
 function showScreen(id) {
-  ['screen-menu','screen-tutorial','screen-game','screen-shop','screen-end'].forEach(s => {
+  ['screen-menu','screen-tutorial','screen-game','screen-shop','screen-end','screen-booster'].forEach(s => {
     document.getElementById(s).style.display = (s === id) ? 'flex' : 'none';
   });
   window.scrollTo(0, 0);
@@ -136,7 +137,10 @@ function renderTable(outcome, bustVal) {
   el.className = 'table-area' + (outcome ? ' '+outcome : '');
   if (!G.table.length) { el.innerHTML='<span class="empty-hint">Clique em Cavar para puxar uma carta</span>'; return; }
   const edL={gold:'✦',gleam:'◈',prism:'◉',ghost:'◌',relic:'⟡'};
+  const edTip={gold:'+chips ao aparecer',gleam:'+2 mult ao aparecer',prism:'+chips = score atual',ghost:'Nunca dá bust',relic:'Cava +1 extra'};
   const sC={red:'seal-red',blue:'seal-blue',gold:'seal-gold'};
+  const sL2={red:'●',blue:'◆',gold:'★'};
+  const sealTip={red:'+1 mult ao puxar',blue:'+$1 ao terminar',gold:'×Mult no Flip7'};
   const sf=new Set();
   let html = G.table.map(c => {
     let cls='card',top='',sub='',badge='';
@@ -152,7 +156,11 @@ function renderTable(outcome, bustVal) {
     }
     if(c.edition) badge+=`<span class="card-edition card-ed-${c.edition}">${edL[c.edition]||'?'}</span>`;
     if(c.seal)    badge+=`<span class="card-seal ${sC[c.seal]||''}">${c.seal[0].toUpperCase()}</span>`;
-    return `<div class="${cls}">${top}${sub?`<span class="card-sub">${sub}</span>`:''}${badge}</div>`;
+    const tipLines=[];
+    if(c.edition&&edTip[c.edition]) tipLines.push(`${edL[c.edition]} ${edTip[c.edition]}`);
+    if(c.seal&&sealTip[c.seal]) tipLines.push(`${sL2[c.seal]} ${sealTip[c.seal]}`);
+    const tip=tipLines.length?`<div class="card-tooltip">${tipLines.join('<br>')}</div>`:'';
+    return `<div class="${cls}">${top}${sub?`<span class="card-sub">${sub}</span>`:''}${badge}${tip}</div>`;
   }).join('');
   if(outcome==='bust') html+=`<div class="bust-overlay"><span class="bust-label">BUST!</span></div>`;
   el.innerHTML=html;
@@ -285,6 +293,16 @@ function renderShopFull() {
 function shopItemHTML(item,rowIdx,itemIdx) {
   const key=`${rowIdx}_${itemIdx}`;
   const canAfford=G.money>=item.cost;
+  if(item.type==='booster') {
+    const icon={uno:'🃏',pack:'📦',combo:'🎴',jokers:'⭐'}[item.subtype]||'🃏';
+    const lbl=item.choose>1?`Escolha ${item.choose} de ${item.picks}`:`Escolha 1 de ${item.picks}`;
+    return `<div class="shop-booster ${canAfford?'':'cant-afford'} rarity-${item.rarity}" onclick="clickShopItem('${key}')">
+      <div class="booster-icon">${icon}</div>
+      <div class="booster-name">${item.name}</div>
+      <div class="booster-choose">${lbl}</div>
+      <div class="booster-footer"><span class="booster-cost">$${item.cost}</span><span class="shop-item-rarity">${item.rarity}</span></div>
+    </div>`;
+  }
   return `<div class="shop-item ${canAfford?'':'cant-afford'} rarity-${item.rarity}" onclick="clickShopItem('${key}')">
     <div class="shop-item-name">${item.name}</div>
     <div class="shop-item-desc">${colorCode(item.desc)}</div>
@@ -337,6 +355,11 @@ function clickShopItem(key) {
     showToast(`✗ Sem dinheiro — precisa de $${item.cost}`,'red');
     const el=document.querySelector(`[onclick="clickShopItem('${key}')"]`);
     if(el){el.classList.add('shake-no');setTimeout(()=>el.classList.remove('shake-no'),400);}
+    return;
+  }
+  if(item.type==='booster'){
+    const r=buyItem(G,item,null);
+    if(r.result==='open_booster'){ updateMoneyDisplay(); openBoosterScreen(r.item,r.contents,key); }
     return;
   }
   if(item.type==='upgrade'&&(item.id==='upgrade_chips'||item.id==='upgrade_mult')){
@@ -404,6 +427,91 @@ function onRemoveCard() {
   document.getElementById('shop-pending-name').textContent=`Remover carta ($${cost})`;
   document.getElementById('shop-pending-desc').textContent='Clique numa carta do baralho abaixo para remover.';
   document.querySelectorAll('.shop-card').forEach(el=>el.classList.add('selectable'));
+}
+
+function openBoosterScreen(item, contents, key) {
+  boosterState={active:true,item,contents,chosen:new Set(),key};
+  showScreen('screen-booster');
+  document.getElementById('booster-title').textContent=item.name;
+  document.getElementById('booster-subtitle').textContent=`Escolha ${item.choose} de ${contents.length}`;
+  const btn=document.getElementById('booster-confirm');
+  btn.disabled=true; btn.textContent=`Confirmar (0/${item.choose})`;
+  const edL={gold:'✦ Dourada',gleam:'◈ Reluzente',prism:'◉ Prisma',ghost:'◌ Fantasma',relic:'⟡ Relíquia'};
+  const edTip2={gold:'+chips ao aparecer',gleam:'+2 mult ao aparecer',prism:'+chips = score atual',ghost:'Nunca dá bust',relic:'Cava +1 extra'};
+  const sL={red:'● Verm',blue:'◆ Azul',gold:'★ Ouro'};
+  const sealTip2={red:'+1 mult ao puxar',blue:'+$1 ao terminar',gold:'×Mult no Flip7'};
+  const edC={gold:'#e8c84a',gleam:'#5ab4f0',prism:'#a87de8',ghost:'#5a5760',relic:'#4ecb7a'};
+  const rC={common:'var(--text2)',uncommon:'var(--blue)',rare:'var(--purple)'};
+  const makeCardTip = (ed, seal) => {
+    const lines=[];
+    if(ed&&edTip2[ed]) lines.push(`${edL[ed]}: ${edTip2[ed]}`);
+    if(seal&&sealTip2[seal]) lines.push(`${sL[seal]}: ${sealTip2[seal]}`);
+    return lines.length ? `<div class="card-tooltip">${lines.join('<br>')}</div>` : '';
+  };
+
+  if(item.subtype==='uno') {
+    document.getElementById('booster-grid').innerHTML = contents.map((c,i)=>`
+      <div class="bst-card ${c.edition==='prism'||c.edition==='ghost'?'bst-rare':''}" data-idx="${i}" onclick="toggleBooster(${i})">
+        <div class="bst-val">${c.value}</div>
+        <div class="bst-ed" ${c.edition?`style="color:${edC[c.edition]}"`:''}>${c.edition?edL[c.edition]:'Sem edição'}</div>
+        ${c.seal?`<div class="bst-seal">${sL[c.seal]}</div>`:''}
+        ${c._isNew?'<div class="bst-new">NOVO</div>':''}
+        <div class="bst-check">✓</div>${makeCardTip(c.edition,c.seal)}</div>`).join('');
+  } else if(item.subtype==='pack') {
+    document.getElementById('booster-grid').innerHTML = contents.map((c,i)=>`
+      <div class="bst-card bst-pack" data-idx="${i}" onclick="toggleBooster(${i})">
+        <div class="bst-val">${c.value}</div>
+        <div class="bst-ed">${c.count}× cópias</div>
+        <div class="bst-check">✓</div></div>`).join('');
+  } else if(item.subtype==='combo') {
+    document.getElementById('booster-grid').innerHTML = contents.map((group,i)=>{
+      const val=group[0].value;
+      const copies=group.map(c=>`
+        <div class="bst-combo-copy">
+          ${c.edition?`<span style="color:${edC[c.edition]};font-size:9px">${edL[c.edition]}</span>`:''}
+          ${c.seal?`<span style="font-size:9px">${sL[c.seal]}</span>`:''}
+          ${makeCardTip(c.edition,c.seal)}
+        </div>`).join('');
+      return `<div class="bst-combo" data-idx="${i}" onclick="toggleBooster(${i})">
+        <div class="bst-val">${val}</div>
+        <div class="bst-combo-copies">${group.length} cópia${group.length>1?'s':''}</div>
+        <div class="bst-combo-list">${copies}</div>
+        <div class="bst-check">✓</div></div>`;
+    }).join('');
+  } else {
+    document.getElementById('booster-grid').innerHTML = contents.map((j,i)=>`
+      <div class="bst-joker ${j.rarity==='rare'?'bst-rare':''}" data-idx="${i}" onclick="toggleBooster(${i})">
+        <div class="bst-jname" style="color:${rC[j.rarity]}">${j.name}</div>
+        <div class="bst-jdesc">${j.desc}</div>
+        <div class="bst-jrar">${j.rarity}</div>
+        <div class="bst-check">✓</div></div>`).join('');
+  }
+}
+
+function toggleBooster(idx) {
+  const ch=boosterState.chosen, max=boosterState.item.choose;
+  ch.has(idx)?ch.delete(idx):(ch.size<max&&ch.add(idx));
+  document.querySelectorAll('.bst-card,.bst-joker,.bst-combo').forEach(el=>
+    el.classList.toggle('bst-selected',ch.has(parseInt(el.dataset.idx))));
+  const n=ch.size, btn=document.getElementById('booster-confirm');
+  btn.disabled=n<max; btn.textContent=`Confirmar (${n}/${max})`;
+}
+
+function confirmBooster() {
+  applyBoosterChoice(G,boosterState.item,[...boosterState.chosen],boosterState.contents);
+  const [row,idx]=boosterState.key.split('_').map(Number);
+  [shopItems.packRow,shopItems.jokerRow,shopItems.upgradeRow][row].splice(idx,1);
+  boosterState={active:false,item:null,contents:[],chosen:new Set(),key:null};
+  showScreen('screen-shop');
+  renderShopRows(); renderShopDeck(); renderShopJokers(); updateMoneyDisplay();
+  document.getElementById('shop-deck-count').textContent=G.fullDeck.length;
+}
+
+function cancelBooster() {
+  G.money+=boosterState.item.cost;
+  boosterState={active:false,item:null,contents:[],chosen:new Set(),key:null};
+  showScreen('screen-shop');
+  renderShopFull();
 }
 
 function cancelPending() {

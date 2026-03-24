@@ -299,6 +299,105 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 }
 .joker-chip:hover .joker-tooltip { display: block; }
 
+/* ── CARD TOOLTIP (edition / seal) ── */
+.card-tooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 5px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-size: 10px;
+  color: var(--text2);
+  white-space: nowrap;
+  z-index: 200;
+  pointer-events: none;
+  font-family: 'DM Mono', monospace;
+  line-height: 1.7;
+  box-shadow: 0 4px 12px rgba(0,0,0,.4);
+}
+.card:hover .card-tooltip,
+.bst-card:hover .card-tooltip { display: block; }
+
+/* ── SHOP BOOSTER ITEM ── */
+.shop-booster {
+  background: var(--bg2); border: 1px solid var(--border2); border-radius: var(--r2);
+  padding: 10px 12px; cursor: pointer; transition: border-color .15s, background .15s;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
+}
+.shop-booster:hover { border-color: var(--accent); background: var(--bg3); }
+.shop-booster.cant-afford { opacity: .4; cursor: default; pointer-events: none; }
+.rarity-uncommon.shop-booster { border-color: rgba(90,180,240,.35); }
+.rarity-rare.shop-booster     { border-color: rgba(168,125,232,.45); }
+.booster-icon   { font-size: 20px; line-height: 1; }
+.booster-name   { font-size: 14px; font-weight: 700; color: var(--text); }
+.booster-choose { font-size: 11px; color: var(--text2); }
+.booster-footer { display: flex; align-items: center; justify-content: space-between; width: 100%; margin-top: 2px; }
+.booster-cost   { font-size: 14px; font-weight: 700; color: var(--accent); font-family: 'DM Mono', monospace; }
+
+/* ── BOOSTER SCREEN ── */
+#screen-booster { gap: 1rem; }
+.booster-header { display: flex; flex-direction: column; gap: 3px; }
+.booster-title  { font-size: 22px; font-weight: 800; color: var(--accent); letter-spacing: -.02em; }
+.booster-subtitle { font-size: 13px; color: var(--text2); font-family: 'DM Mono', monospace; }
+.booster-grid   { display: flex; flex-wrap: wrap; gap: 10px; }
+.booster-actions { display: flex; gap: 8px; }
+
+/* ── BOOSTER CARDS ── */
+.bst-card {
+  width: 90px; min-height: 110px; border-radius: var(--r2);
+  background: var(--bg2); border: 2px solid var(--border2);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 5px; cursor: pointer; position: relative; padding: 8px;
+  transition: border-color .12s, background .12s, transform .1s;
+}
+.bst-card:hover { border-color: var(--accent); background: var(--bg3); transform: translateY(-2px); }
+.bst-card.bst-selected { border-color: var(--green); background: var(--green-bg); }
+.bst-card.bst-rare     { border-color: rgba(168,125,232,.6); }
+.bst-val  { font-size: 28px; font-weight: 800; font-family: 'DM Mono', monospace; color: var(--text); }
+.bst-ed   { font-size: 9px; text-align: center; color: var(--text3); }
+.bst-seal { font-size: 9px; color: var(--text2); }
+.bst-new  { position: absolute; top: 4px; left: 4px; font-size: 8px; font-weight: 700; color: var(--green); background: var(--green-bg); border-radius: 3px; padding: 1px 4px; letter-spacing: .05em; }
+.bst-check { position: absolute; bottom: 4px; right: 6px; font-size: 12px; color: var(--green); opacity: 0; transition: opacity .1s; }
+.bst-card.bst-selected .bst-check { opacity: 1; }
+
+/* ── BOOSTER JOKERS ── */
+.bst-joker {
+  flex: 1; min-width: 140px; max-width: 200px; border-radius: var(--r2);
+  background: var(--bg2); border: 2px solid var(--border2);
+  display: flex; flex-direction: column; gap: 5px; padding: 10px 12px;
+  cursor: pointer; position: relative;
+  transition: border-color .12s, background .12s;
+}
+.bst-joker:hover { border-color: var(--purple); background: var(--bg3); }
+.bst-joker.bst-selected { border-color: var(--green); background: var(--green-bg); }
+.bst-joker.bst-rare     { border-color: rgba(168,125,232,.6); }
+.bst-jname { font-size: 13px; font-weight: 700; }
+.bst-jdesc { font-size: 10px; color: var(--text2); line-height: 1.4; }
+.bst-jrar  { font-size: 9px; color: var(--text3); text-transform: uppercase; letter-spacing: .08em; font-family: 'DM Mono', monospace; margin-top: auto; }
+.bst-joker .bst-check { position: absolute; bottom: 4px; right: 6px; font-size: 12px; color: var(--green); opacity: 0; transition: opacity .1s; }
+.bst-joker.bst-selected .bst-check { opacity: 1; }
+
+/* ── BOOSTER COMBO CARD ── */
+.bst-combo {
+  min-width: 100px; border-radius: var(--r2);
+  background: var(--bg2); border: 2px solid var(--border2);
+  display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 10px 20px;
+  cursor: pointer; position: relative;
+  transition: border-color .12s, background .12s;
+}
+.bst-combo:hover  { border-color: var(--accent); background: var(--bg3); }
+.bst-combo.bst-selected { border-color: var(--green); background: var(--green-bg); }
+.bst-combo-copies { font-size: 10px; color: var(--text3); font-family: 'DM Mono', monospace; }
+.bst-combo-list   { display: flex; flex-direction: column; gap: 2px; width: 100%; }
+.bst-combo-copy   { position: relative; display: flex; gap: 4px; align-items: center; font-size: 9px; color: var(--text2); justify-content: center; }
+.bst-combo .bst-check { position: absolute; bottom: 4px; right: 6px; font-size: 12px; color: var(--green); opacity: 0; transition: opacity .1s; }
+.bst-combo.bst-selected .bst-check { opacity: 1; }
+.bst-pack .bst-ed { font-size: 10px; color: var(--text2); }
+
 @media (max-width: 480px) {
   .top-bar { grid-template-columns: repeat(3,1fr); }
   .shop-items-grid { grid-template-columns: 1fr; }
