@@ -77,18 +77,14 @@
     </div>
     <div class="deck-info-wrap" id="ui-deck-info"></div>
   </div>
-  <div style="display:flex;align-items:center;justify-content:flex-end;gap:10px;">
-  <div class="jokers-section">
-    <div class="jokers-label">Jokers</div>
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+    <div class="pips-row" id="ui-pips"></div>
     <div class="jokers-row" id="ui-jokers"><span class="joker-empty">Sem jokers — compre na loja</span></div>
   </div>
   <div class="btn-row">
     <button class="btn btn-primary" id="btn-draw"    onclick="onDraw()">Cavar</button>
     <button class="btn btn-stop"    id="btn-stop"    onclick="onStop()">Parar</button>
-    <div style="display:flex;flex-direction:column;align-items:flex-start;gap:3px">
-      <div class="pips-row" id="ui-pips" style="margin:0"></div>
-      <button class="btn btn-amber" id="btn-discard" onclick="onDiscard()">Descartar topo</button>
-    </div>
+    <button class="btn btn-amber"   id="btn-discard" onclick="onDiscard()">Descartar topo</button>
     <button class="btn btn-next"    id="btn-next"    onclick="onNext()">Próxima mão</button>
   </div>
   <div class="log-wrap"><div id="ui-log"></div></div>
@@ -175,6 +171,5 @@
 
 <script src="game.js"></script>
 <script src="ui.js"></script>
-<script>showMenu();</script>
 </body>
 </html>
