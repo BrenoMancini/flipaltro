@@ -478,12 +478,11 @@ function openBoosterScreen(item, contents, key) {
 
   if(item.subtype==='numbers') {
     document.getElementById('booster-grid').innerHTML = contents.map((c,i)=>{
-      const varLabel = c.variant==='unique' ? `<div class="bst-new">ÚNICO ×${c.count}</div>` : `<div class="bst-new" style="background:var(--blue-bg);color:var(--blue)">COMBO ×${c.count}</div>`;
       return `<div class="bst-card ${c.edition==='prism'||c.edition==='ghost'?'bst-rare':''}" data-idx="${i}" onclick="toggleBooster(${i})">
         <div class="bst-val">${c.value}</div>
         <div class="bst-ed" ${c.edition?`style="color:${edC[c.edition]}"`:''}>${c.edition?edL[c.edition]:'Sem edição'}</div>
         ${c.seal?`<div class="bst-seal">${sL[c.seal]}</div>`:''}
-        ${varLabel}
+        <div class="bst-count">×${c.count}</div>
         <div class="bst-check">✓</div>${makeCardTip(c.edition,c.seal)}</div>`;
     }).join('');
   } else {

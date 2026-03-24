@@ -335,8 +335,8 @@ function applyJokerEndHand(joker, state, earned, reason) {
     addLog(state, `🦅 Fênix: bust → ${half} pts (metade)`); return half;
   }
   if (joker.id === 'joker_daredevil' && reason === 'bust') {
-    state.permanentMult = Math.round((state.permanentMult + 5) * 100) / 100;
-    addLog(state, `😈 Temerário: bust → +5 mult perm! Total ${state.permanentMult}`);
+    state.permanentMult = Math.round((state.permanentMult + 0.1) * 100) / 100;
+    addLog(state, `😈 Temerário: bust → +0.1 mult perm! Total ${state.permanentMult}`);
   }
   if (joker.id === 'joker_banker' && reason !== 'bust') {
     state.money += 1; addLog(state, `🏦 Banqueiro: +$1`);
@@ -403,7 +403,7 @@ const SHOP_CATALOG = [
   { id:'joker_phoenix',    type:'joker', name:'Fênix',       desc:'Bust → ganha metade do score atual',                 cost:5,  rarity:'common'   },
   { id:'joker_banker',     type:'joker', name:'Banqueiro',   desc:'Toda mão não-bust → +$1',                            cost:6,  rarity:'uncommon' },
   { id:'joker_flip7fan',   type:'joker', name:'Fanático',    desc:'Flip7 → Score ×3',                                   cost:9,  rarity:'uncommon' },
-  { id:'joker_daredevil',  type:'joker', name:'Temerário',   desc:'Bust → +5 mult perm (acumulativo)',                  cost:9,  rarity:'rare'     },
+  { id:'joker_daredevil',  type:'joker', name:'Temerário',   desc:'Bust → +0.1 mult perm (acumulativo)',                cost:9,  rarity:'rare'     },
   { id:'joker_pentacle',   type:'joker', name:'Pentâculo',   desc:'Flip5 → +15 pts',                                    cost:6,  rarity:'common'   },
   { id:'joker_catalyst',   type:'joker', name:'Catalisador', desc:'Flip5 → Score ×2',                                   cost:8,  rarity:'uncommon' },
   { id:'joker_accumulator',type:'joker', name:'Acumulador',  desc:'Flip5 → +5 chips perm',                              cost:9,  rarity:'rare'     },

@@ -360,9 +360,10 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .bst-val  { font-size: 28px; font-weight: 800; font-family: 'DM Mono', monospace; color: var(--text); }
 .bst-ed   { font-size: 9px; text-align: center; color: var(--text3); }
 .bst-seal { font-size: 9px; color: var(--text2); }
-.bst-new  { position: absolute; top: 4px; left: 4px; font-size: 8px; font-weight: 700; color: var(--green); background: var(--green-bg); border-radius: 3px; padding: 1px 4px; letter-spacing: .05em; }
+.bst-count { position: absolute; bottom: 4px; right: 6px; font-size: 9px; font-weight: 700; color: var(--text3); font-family: 'DM Mono', monospace; }
 .bst-check { position: absolute; bottom: 4px; right: 6px; font-size: 12px; color: var(--green); opacity: 0; transition: opacity .1s; }
 .bst-card.bst-selected .bst-check { opacity: 1; }
+.bst-card.bst-selected .bst-count { opacity: 0; }
 
 /* ── BOOSTER JOKERS ── */
 .bst-joker {
