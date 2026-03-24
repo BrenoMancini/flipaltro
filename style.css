@@ -57,6 +57,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 }
 .table-area.bust     { border-color: var(--red)!important; background: var(--red-bg)!important; border-width: 2px!important; animation: bustShake .4s ease; }
 .table-area.flip7win { border-color: var(--green); background: var(--green-bg); }
+.table-area.flip3    { border-color: var(--orange); background: var(--orange-bg); border-width: 2px; }
 .table-area.flip5    { border-color: var(--accent); background: #1a1500; }
 .table-area.frozen   { border-color: var(--blue);  background: var(--blue-bg); }
 .table-area.stopped  { border-color: var(--text3); }
