@@ -98,6 +98,17 @@ function render() {
 }
 
 // ── GAME ───────────────────────────────────────────────────
+function bumpCounter(id, newVal) {
+  const el = document.getElementById(id);
+  const old = parseFloat(el.textContent) || 0;
+  el.textContent = newVal;
+  if (newVal > old) {
+    el.classList.remove('counter-bump');
+    void el.offsetWidth;
+    el.classList.add('counter-bump');
+  }
+}
+
 function renderGame() {
   document.getElementById('ui-round').textContent     = `${G.round} / ${GAME_CONFIG.TOTAL_ROUNDS}`;
   document.getElementById('ui-hand').textContent      = `${G.handNum} / ${GAME_CONFIG.HANDS_PER_ROUND}`;
@@ -105,8 +116,8 @@ function renderGame() {
   document.getElementById('ui-score').textContent     = G.roundScore;
   document.getElementById('ui-money').textContent     = `$${G.money}`;
   document.getElementById('ui-flip7').textContent     = G.flip7Count;
-  document.getElementById('ui-chips').textContent     = G.chips;
-  document.getElementById('ui-mult').textContent      = G.mult;
+  bumpCounter('ui-chips', G.chips);
+  bumpCounter('ui-mult',  G.mult);
   document.getElementById('ui-livescore').textContent = liveScore(G);
 
   const pct = Math.min(100, Math.round(G.roundScore / G.goal * 100));
