@@ -4,6 +4,7 @@ let G = null;
 let shopItems = [];
 let pendingItem = null;
 let boosterState = { active:false, item:null, contents:[], chosen:new Set(), key:null };
+let savedShopItems = null;
 let toastTimer = null;
 let lastOutcome = null;
 let lastBustVal = null;
@@ -124,7 +125,7 @@ function renderGame() {
   const btnNext = document.getElementById('btn-next');
   btnNext.style.display = over ? 'block' : 'none';
   if (over) {
-    if (G.roundWon) btnNext.textContent = `Meta atingida! +$${G.handsLeft} bônus →`;
+    if (G.roundWon) btnNext.textContent = `Meta atingida! → Loja`;
     else if (G.handsLeft <= 0) btnNext.textContent = 'Ver resultado';
     else if (G.lastReason === 'freeze') btnNext.textContent = 'Freeze! Mão grátis → continuar';
     else btnNext.textContent = 'Próxima mão';
@@ -185,7 +186,14 @@ function renderPips() {
 function renderJokers(triggeredIds=[]) {
   const el=document.getElementById('ui-jokers');
   if(!G.jokers.length){el.innerHTML='<span class="joker-empty">Sem jokers — compre na loja</span>';return;}
-  const trigL={joker_greedy:'qualquer mão não-bust',joker_flip7fan:'Flip7',joker_stoic:'parar com 1 carta',joker_phoenix:'bust',joker_banker:'toda mão',joker_daredevil:'bust',joker_pentacle:'Flip5',joker_catalyst:'Flip5',joker_accumulator:'Flip5'};
+  const trigL={
+    joker_greedy:'toda mão não-bust', joker_stoic:'parar com 1 carta', joker_phoenix:'bust',
+    joker_banker:'toda mão', joker_flip7fan:'Flip7', joker_daredevil:'bust',
+    joker_pentacle:'Flip5', joker_catalyst:'Flip5', joker_accumulator:'Flip5',
+    joker_disciple:'Flip3', joker_even:'carta par', joker_odd:'carta ímpar',
+    joker_humble:'carta 0/1', joker_sequence:'3 consecutivos', joker_protector:'3ª carta',
+    joker_luck:'parar', joker_twins:'Second Chance', joker_ascetic:'round sem comprar',
+  };
   el.innerHTML=G.jokers.map(j=>{
     const triggered=triggeredIds.includes(j.id);
     return `<div class="joker-card${triggered?' joker-triggered':''}">
@@ -230,14 +238,17 @@ function buildScoringSequence(state) {
   const triggeredIds=[];
   for(const joker of state.jokers) {
     let desc=null;
-    if(joker.id==='joker_greedy'&&reason!=='bust') desc='+10 pts';
-    if(joker.id==='joker_stoic'&&reason==='stop'&&G.table.filter(c=>c.kind==='number').length===1)  desc='+1 mult perm';
-    if(joker.id==='joker_flip7fan'&&reason==='flip7') desc='×2';
-    if(joker.id==='joker_phoenix'&&reason==='bust')   desc='+5 pts';
+    if(joker.id==='joker_greedy'&&reason!=='bust')     desc='+10 pts';
+    if(joker.id==='joker_stoic'&&reason==='stop'&&G.table.filter(c=>c.kind==='number').length===1) desc='+1 mult perm';
+    if(joker.id==='joker_flip7fan'&&reason==='flip7') desc='×3';
+    if(joker.id==='joker_phoenix'&&reason==='bust')   desc='metade pts';
+    if(joker.id==='joker_daredevil'&&reason==='bust') desc='+5 mult perm';
     if(joker.id==='joker_banker'&&reason!=='bust')    desc='+$1';
     if(joker.id==='joker_pentacle'&&G.flip5Done)      desc='+15 pts';
     if(joker.id==='joker_catalyst'&&G.flip5Done)      desc='×2';
-    if(joker.id==='joker_accumulator'&&G.flip5Done)   desc='+1 mult perm';
+    if(joker.id==='joker_accumulator'&&G.flip5Done)   desc='+5 chips perm';
+    if(joker.id==='joker_disciple'&&G.flip3Done)      desc='+0.25 mult perm';
+    if(joker.id==='joker_luck'&&reason==='stop')      desc='+mult aleatório';
     if(desc){seq.push({type:'joker',detail:desc,id:joker.id});triggeredIds.push(joker.id);}
   }
   return {seq,triggeredIds};
@@ -279,22 +290,29 @@ function showFloatLabel(el,text) {
 // ── SHOP ───────────────────────────────────────────────────
 function renderShopFull() {
   shopItems=generateShop(G); pendingItem=null;
+  renderShopUI();
+}
+
+function renderShopUI() {
   document.getElementById('shop-round').textContent      = G.round;
   document.getElementById('shop-money').textContent      = `$${G.money}`;
   document.getElementById('shop-score').textContent      = G.roundScore;
   document.getElementById('shop-goal').textContent       = G.goal;
   document.getElementById('shop-deck-count').textContent = G.fullDeck.length;
   document.getElementById('shop-next-round').textContent = G.round+1;
+  const topRnd = document.getElementById('shop-next-round-top');
+  if(topRnd) topRnd.textContent = G.round+1;
   renderShopRows(); renderShopDeck(); renderShopJokers();
   document.getElementById('btn-remove-card').textContent=`Remover carta — $${G.removeCost}`;
   document.getElementById('shop-pending').style.display='none';
+  pendingItem=null;
 }
 
 function shopItemHTML(item,rowIdx,itemIdx) {
   const key=`${rowIdx}_${itemIdx}`;
   const canAfford=G.money>=item.cost;
   if(item.type==='booster') {
-    const icon={uno:'🃏',pack:'📦',combo:'🎴',jokers:'⭐'}[item.subtype]||'🃏';
+    const icon={numbers:'🃏',jokers:'⭐'}[item.subtype]||'🃏';
     const lbl=item.choose>1?`Escolha ${item.choose} de ${item.picks}`:`Escolha 1 de ${item.picks}`;
     return `<div class="shop-booster ${canAfford?'':'cant-afford'} rarity-${item.rarity}" onclick="clickShopItem('${key}')">
       <div class="booster-icon">${icon}</div>
@@ -346,7 +364,17 @@ function getShopItemByKey(key) {
   return [shopItems.packRow,shopItems.jokerRow,shopItems.upgradeRow][row]?.[idx]||null;
 }
 
-function updateMoneyDisplay() { document.getElementById('shop-money').textContent=`$${G.money}`; }
+function updateMoneyDisplay() {
+  document.getElementById('shop-money').textContent=`$${G.money}`;
+  document.querySelectorAll('.shop-item,.shop-booster').forEach(el=>{
+    const m=el.getAttribute('onclick')?.match(/clickShopItem\('([^']+)'\)/);
+    if(!m) return;
+    const it=getShopItemByKey(m[1]);
+    if(it) el.classList.toggle('cant-afford', G.money < it.cost);
+  });
+  const btn=document.getElementById('btn-remove-card');
+  if(btn){ btn.disabled=G.money<G.removeCost; btn.textContent=`Remover carta — $${G.removeCost}`; }
+}
 
 function clickShopItem(key) {
   const item=getShopItemByKey(key);
@@ -358,6 +386,7 @@ function clickShopItem(key) {
     return;
   }
   if(item.type==='booster'){
+    savedShopItems={packRow:[...shopItems.packRow],jokerRow:[...shopItems.jokerRow],upgradeRow:[...shopItems.upgradeRow]};
     const r=buyItem(G,item,null);
     if(r.result==='open_booster'){ updateMoneyDisplay(); openBoosterScreen(r.item,r.contents,key); }
     return;
@@ -406,9 +435,7 @@ function selectDeckCard(cardId) {
     const target=G.fullDeck.find(c=>c.id===cardId);
     showToast(`✓ ${it.name} em [${target?cardName(target):'carta'}]`);
     if(it.id==='remove_fixed'){
-      G.removeCount++;
-      G.removeCost=Math.ceil(2*Math.pow(1.20,G.removeCount));
-      document.getElementById('btn-remove-card').textContent=`Remover carta — $${G.removeCost}`;
+      G.removeCost += 1;
     }
     pendingItem=null;
     document.getElementById('shop-pending').style.display='none';
@@ -449,34 +476,15 @@ function openBoosterScreen(item, contents, key) {
     return lines.length ? `<div class="card-tooltip">${lines.join('<br>')}</div>` : '';
   };
 
-  if(item.subtype==='uno') {
-    document.getElementById('booster-grid').innerHTML = contents.map((c,i)=>`
-      <div class="bst-card ${c.edition==='prism'||c.edition==='ghost'?'bst-rare':''}" data-idx="${i}" onclick="toggleBooster(${i})">
+  if(item.subtype==='numbers') {
+    document.getElementById('booster-grid').innerHTML = contents.map((c,i)=>{
+      const varLabel = c.variant==='unique' ? `<div class="bst-new">ÚNICO ×${c.count}</div>` : `<div class="bst-new" style="background:var(--blue-bg);color:var(--blue)">COMBO ×${c.count}</div>`;
+      return `<div class="bst-card ${c.edition==='prism'||c.edition==='ghost'?'bst-rare':''}" data-idx="${i}" onclick="toggleBooster(${i})">
         <div class="bst-val">${c.value}</div>
         <div class="bst-ed" ${c.edition?`style="color:${edC[c.edition]}"`:''}>${c.edition?edL[c.edition]:'Sem edição'}</div>
         ${c.seal?`<div class="bst-seal">${sL[c.seal]}</div>`:''}
-        ${c._isNew?'<div class="bst-new">NOVO</div>':''}
-        <div class="bst-check">✓</div>${makeCardTip(c.edition,c.seal)}</div>`).join('');
-  } else if(item.subtype==='pack') {
-    document.getElementById('booster-grid').innerHTML = contents.map((c,i)=>`
-      <div class="bst-card bst-pack" data-idx="${i}" onclick="toggleBooster(${i})">
-        <div class="bst-val">${c.value}</div>
-        <div class="bst-ed">${c.count}× cópias</div>
-        <div class="bst-check">✓</div></div>`).join('');
-  } else if(item.subtype==='combo') {
-    document.getElementById('booster-grid').innerHTML = contents.map((group,i)=>{
-      const val=group[0].value;
-      const copies=group.map(c=>`
-        <div class="bst-combo-copy">
-          ${c.edition?`<span style="color:${edC[c.edition]};font-size:9px">${edL[c.edition]}</span>`:''}
-          ${c.seal?`<span style="font-size:9px">${sL[c.seal]}</span>`:''}
-          ${makeCardTip(c.edition,c.seal)}
-        </div>`).join('');
-      return `<div class="bst-combo" data-idx="${i}" onclick="toggleBooster(${i})">
-        <div class="bst-val">${val}</div>
-        <div class="bst-combo-copies">${group.length} cópia${group.length>1?'s':''}</div>
-        <div class="bst-combo-list">${copies}</div>
-        <div class="bst-check">✓</div></div>`;
+        ${varLabel}
+        <div class="bst-check">✓</div>${makeCardTip(c.edition,c.seal)}</div>`;
     }).join('');
   } else {
     document.getElementById('booster-grid').innerHTML = contents.map((j,i)=>`
@@ -508,10 +516,13 @@ function confirmBooster() {
 }
 
 function cancelBooster() {
-  G.money+=boosterState.item.cost;
+  G.money += boosterState.item.cost;
+  G.boughtThisRound = Math.max(0, G.boughtThisRound - 1);
   boosterState={active:false,item:null,contents:[],chosen:new Set(),key:null};
+  if(savedShopItems) shopItems=savedShopItems;
+  savedShopItems=null;
   showScreen('screen-shop');
-  renderShopFull();
+  renderShopUI();
 }
 
 function cancelPending() {
@@ -520,7 +531,11 @@ function cancelPending() {
   document.querySelectorAll('.shop-card').forEach(el=>el.classList.remove('selectable'));
 }
 
-function leaveShop() { startNextRound(G); render(); }
+function leaveShop() {
+  const got = checkAsceta(G);
+  if(got) showToast('🧘 Asceta: +1 mult perm!');
+  startNextRound(G); render();
+}
 
 // ── END ────────────────────────────────────────────────────
 function renderEnd(win) {
@@ -546,6 +561,7 @@ function onDraw() {
   else if(result.result==='freeze')        {lastOutcome='frozen'; lastBustVal=null;}
   else if(result.result==='freeze_ignored'){lastOutcome=null;     lastBustVal=null;}
   else if(result.result==='flip7')         {lastOutcome='flip7win';lastBustVal=null;}
+  else if(result.result==='flip3')         {lastOutcome=null;     lastBustVal=null;showToast('⚡ FLIP3! +5 chips — continue cavando!');}
   else if(result.result==='flip5')         {lastOutcome='flip5';  lastBustVal=null;showToast('⭐ FLIP5! +1 mult — continue cavando!');}
   else if(result.result==='second_chance'){lastOutcome=null;     lastBustVal=null;showToast('🛡 Second Chance! Bust cancelado!');}
   else if(result.result==='sc')          {lastOutcome=null;     lastBustVal=null;showToast('🛡 Second Chance ativado!');}

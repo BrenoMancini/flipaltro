@@ -5,7 +5,7 @@
 const GAME_CONFIG = {
   TOTAL_ROUNDS: 8,
   HANDS_PER_ROUND: 5,
-  DISCARDS_PER_ROUND: 3,
+  DISCARDS_PER_ROUND: 5,
   FLIP7_MULT: 2,
   FLIP5_MULT_BONUS: 1,
   STARTING_MONEY: 4,
@@ -44,16 +44,18 @@ function createGameState() {
     money: GAME_CONFIG.STARTING_MONEY,
     handsLeft: GAME_CONFIG.HANDS_PER_ROUND,
     discardsLeft: GAME_CONFIG.DISCARDS_PER_ROUND,
-    flip7Count: 0,
+    flip7Count: 0, flip7sThisRound: 0, flip5sThisRound: 0,
     fullDeck: buildStarterDeck(),
     deck: [], discardPile: [], table: [],
     seen: new Set(),
     chips: 0, mult: 1, mustDraw: 0,
     handOver: false, lastReason: null, roundWon: false, roundWonHandsBonus: 0,
-    blueSealCount: 0, flip5Done: false,
+    blueSealCount: 0, flip5Done: false, flip3Done: false,
     secondChance: false,
-    permanentMult: 0,
-    removeCost: 2, removeCount: 0,
+    permanentMult: 0, permanentChips: 0,
+    removeCost: 2,
+    boughtThisRound: 0,
+    protectorCounter: 0,
     jokers: [], log: [],
   };
 }
@@ -85,6 +87,31 @@ function applyEditionOnDraw(state, card) {
   // ghost não tem efeito de draw, só evita bust
 }
 
+function applyJokerOnDraw(state, card) {
+  if (card.kind !== 'number') return;
+  const v = card.value;
+  for (const joker of state.jokers) {
+    if (joker.id === 'joker_even' && v % 2 === 0 && v > 0) {
+      state.mult += 1; addLog(state, `⚖️ Par: +1 mult → ${liveScore(state)}`);
+    }
+    if (joker.id === 'joker_odd' && v % 2 !== 0) {
+      state.mult += 1; addLog(state, `🎲 Ímpar: +1 mult → ${liveScore(state)}`);
+    }
+    if (joker.id === 'joker_humble' && (v === 0 || v === 1)) {
+      state.mult = Math.ceil(state.mult * 1.5);
+      addLog(state, `🙏 Humilde: ×1.5 mult → ${liveScore(state)}`);
+    }
+    if (joker.id === 'joker_sequence') {
+      const s = state.seen;
+      let bonus = 0;
+      for (const x of [v - 2, v - 1, v]) {
+        if (x >= 0 && s.has(x) && s.has(x + 1) && s.has(x + 2)) bonus += 3;
+      }
+      if (bonus > 0) { state.mult += bonus; addLog(state, `🔢 Sequência: +${bonus} mult → ${liveScore(state)}`); }
+    }
+  }
+}
+
 function initRound(state) {
   state.deck = shuffle([...state.fullDeck]);
   state.discardPile = [];
@@ -94,6 +121,8 @@ function initRound(state) {
   state.roundWonHandsBonus = 0;
   state.handsLeft = GAME_CONFIG.HANDS_PER_ROUND;
   state.discardsLeft = GAME_CONFIG.DISCARDS_PER_ROUND;
+  state.flip7sThisRound = 0; state.flip5sThisRound = 0;
+  state.boughtThisRound = 0;
   state.goal = GAME_CONFIG.ROUND_GOALS[state.round - 1];
   startHand(state);
 }
@@ -101,9 +130,11 @@ function initRound(state) {
 function startHand(state) {
   state.table = [];
   state.seen = new Set();
-  state.chips = 0; state.mult = 1 + state.permanentMult; state.mustDraw = 0;
-  state.handOver = false; state.lastReason = null; state.blueSealCount = 0; state.flip5Done = false;
+  state.chips = state.permanentChips; state.mult = 1 + state.permanentMult; state.mustDraw = 0;
+  state.handOver = false; state.lastReason = null; state.blueSealCount = 0;
+  state.flip5Done = false; state.flip3Done = false;
   state.secondChance = false;
+  state.protectorCounter = 0;
   addLog(state, `— Mão ${state.handNum} (deck:${state.deck.length} desc:${state.discardPile.length}) —`);
 }
 
@@ -174,30 +205,49 @@ function drawCard(state) {
 
   // NUMBER
   if (card.kind === 'number') {
-    if (card.edition !== 'ghost' && state.seen.has(card.value)) {
+    // Protetor: a cada 3 cartas numéricas, protege de bust
+    const hasProtetor = state.jokers.some(j => j.id === 'joker_protector');
+    let protectorBlocked = false;
+    if (hasProtetor) {
+      state.protectorCounter++;
+      if (state.protectorCounter % 3 === 0) protectorBlocked = state.seen.has(card.value);
+    }
+
+    if (card.edition !== 'ghost' && !protectorBlocked && state.seen.has(card.value)) {
       if (state.secondChance) {
         state.secondChance = false;
+        for (const j of state.jokers)
+          if (j.id === 'joker_twins') { state.permanentMult = Math.round((state.permanentMult + 2) * 100) / 100; addLog(state, `👥 Gêmeos: +2 mult perm!`); }
         addLog(state, `🛡 Second Chance! Bust no ${card.value} cancelado!`);
-        // remove a carta duplicada da mesa
-        state.table.pop();
-        state.discardPile.push(card);
+        state.table.pop(); state.discardPile.push(card);
         return { result: 'second_chance', card };
       }
       return endHand(state, 'bust', card);
     }
+    if (protectorBlocked) addLog(state, `🛡 Protetor: bust em ${card.value} bloqueado! (${state.protectorCounter}ª carta)`);
 
     state.seen.add(card.value);
     state.chips += card.value;
-    applyEditionOnDraw(state, card); // gold dá bônus extra, gleam +mult, etc
+    applyEditionOnDraw(state, card);
+    applyJokerOnDraw(state, card);
     if (card.seal === 'red') { state.mult += 1; addLog(state, `● Selo Vermelho: +1 mult → ${liveScore(state)}`); }
     if (card.seal === 'blue') state.blueSealCount++;
     if (state.mustDraw > 0) state.mustDraw--;
     addLog(state, `Puxou ${card.value} — score:${liveScore(state)} (${state.seen.size} únicos)`);
 
+    // FLIP3 — bônus intermediário
+    if (state.seen.size === 3 && !state.flip3Done) {
+      state.chips += 5;
+      state.flip3Done = true;
+      addLog(state, `⚡ FLIP3! +5 chips → score:${liveScore(state)}`);
+      return { result: 'flip3', card };
+    }
+
     // FLIP5 — bônus intermediário, mão continua
     if (state.seen.size === 5 && !state.flip5Done) {
       state.mult += GAME_CONFIG.FLIP5_MULT_BONUS;
       state.flip5Done = true;
+      state.flip5sThisRound++;
       addLog(state, `⭐ FLIP5! +${GAME_CONFIG.FLIP5_MULT_BONUS} mult → score:${liveScore(state)}`);
       return { result: 'flip5', card };
     }
@@ -241,7 +291,7 @@ function endHand(state, reason, bustCard) {
   } else if (reason === 'flip7') {
     state.mult *= GAME_CONFIG.FLIP7_MULT;
     earned = liveScore(state);
-    state.flip7Count++;
+    state.flip7Count++; state.flip7sThisRound++;
     state.money += state.blueSealCount;
     addLog(state, `🌟 FLIP7! mult×${GAME_CONFIG.FLIP7_MULT} → score:${earned} pts!${state.blueSealCount > 0 ? ` +$${state.blueSealCount}` : ''}`);
   } else {
@@ -259,15 +309,59 @@ function endHand(state, reason, bustCard) {
   return { result: reason, earned, bustCard };
 }
 
+function rollAcaso() {
+  const r = Math.random();
+  if (r < 0.50) return Math.floor(Math.random() * 4) + 1;   // 1-4  (50%)
+  if (r < 0.75) return Math.floor(Math.random() * 4) + 5;   // 5-8  (25%)
+  if (r < 0.90) return Math.floor(Math.random() * 4) + 9;   // 9-12 (15%)
+  return Math.floor(Math.random() * 3) + 13;                 // 13-15 (10%)
+}
+
 function applyJokerEndHand(joker, state, earned, reason) {
-  if (joker.id === 'joker_greedy'   && reason !== 'bust')   return earned + 10;
-  if (joker.id === 'joker_flip7fan' && reason === 'flip7')  return earned * 2;
-  if (joker.id === 'joker_stoic'    && reason === 'stop' && state.table.filter(c => c.kind === 'number').length === 1)  { state.permanentMult += 1; addLog(state, `🗿 Estoico: +1 mult permanente!`); return earned + state.chips; }
-  if (joker.id === 'joker_phoenix'  && reason === 'bust')   { state.roundScore += 5; return 5; }
-  if (joker.id === 'joker_banker'   && reason !== 'bust')   { state.money += 1; addLog(state, `💰 Banqueiro: +$1`); }
-  if (joker.id === 'joker_pentacle' && state.flip5Done)      return earned + 15;
-  if (joker.id === 'joker_catalyst' && state.flip5Done)      return earned * 2;
-  if (joker.id === 'joker_accumulator' && state.flip5Done)  { state.permanentMult += 1; addLog(state, `⚡ Acumulador: +1 mult permanente!`); }
+  // ── Jokers de pontuação ─────────────────────────────────
+  if (joker.id === 'joker_greedy' && reason !== 'bust') {
+    addLog(state, `💰 Avarento: +10 pts`); return earned + 10;
+  }
+  if (joker.id === 'joker_flip7fan' && reason === 'flip7') {
+    addLog(state, `🌀 Fanático: ×3`); return earned * 3;
+  }
+  if (joker.id === 'joker_stoic' && reason === 'stop' && state.table.filter(c => c.kind === 'number').length === 1) {
+    state.permanentMult = Math.round((state.permanentMult + 1) * 100) / 100;
+    addLog(state, `🗿 Estoico: +1 mult perm → total ${state.permanentMult}`);
+    return earned + state.chips;
+  }
+  if (joker.id === 'joker_phoenix' && reason === 'bust') {
+    const half = Math.floor(state.chips * state.mult / 2);
+    addLog(state, `🦅 Fênix: bust → ${half} pts (metade)`); return half;
+  }
+  if (joker.id === 'joker_daredevil' && reason === 'bust') {
+    state.permanentMult = Math.round((state.permanentMult + 5) * 100) / 100;
+    addLog(state, `😈 Temerário: bust → +5 mult perm! Total ${state.permanentMult}`);
+  }
+  if (joker.id === 'joker_banker' && reason !== 'bust') {
+    state.money += 1; addLog(state, `🏦 Banqueiro: +$1`);
+  }
+  // ── Flip5 ───────────────────────────────────────────────
+  if (joker.id === 'joker_pentacle' && state.flip5Done) {
+    addLog(state, `⭐ Pentâculo: +15 pts`); return earned + 15;
+  }
+  if (joker.id === 'joker_catalyst' && state.flip5Done) {
+    addLog(state, `⚗️ Catalisador: ×2`); return earned * 2;
+  }
+  if (joker.id === 'joker_accumulator' && state.flip5Done) {
+    state.permanentChips += 5; addLog(state, `⚡ Acumulador: +5 chips perm!`);
+  }
+  // ── Flip3 ───────────────────────────────────────────────
+  if (joker.id === 'joker_disciple' && state.flip3Done) {
+    state.permanentMult = Math.round((state.permanentMult + 0.25) * 100) / 100;
+    addLog(state, `🧘 Discípulo: Flip3 → +0.25 mult perm → ${state.permanentMult}`);
+  }
+  // ── Novos ───────────────────────────────────────────────
+  if (joker.id === 'joker_luck' && reason === 'stop') {
+    const bonus = rollAcaso();
+    state.mult += bonus; addLog(state, `🎰 Acaso: parou → +${bonus} mult → ${liveScore(state)}`);
+    return state.chips * state.mult;
+  }
   return earned;
 }
 
@@ -293,8 +387,8 @@ function nextHand(state) {
 }
 
 function moneyFromRound(state) {
-  const excess = Math.floor(Math.max(0, state.roundScore - state.goal) / 10);
-  return Math.min(12, 5 + state.handsLeft + excess);
+  const excess = Math.floor(Math.max(0, state.roundScore - state.goal) / 15);
+  return Math.min(12, 4 + state.handsLeft + excess) + state.flip7sThisRound * 2 + state.flip5sThisRound;
 }
 
 // ============================================================
@@ -303,15 +397,25 @@ function moneyFromRound(state) {
 
 const SHOP_CATALOG = [
   // ── JOKERS ──
-  { id: 'joker_greedy',   type: 'joker', name: 'Avarento',   desc: '+10 pts em toda mão não-bust',      cost: 6, rarity: 'common' },
-  { id: 'joker_flip7fan', type: 'joker', name: 'Fanático',   desc: 'Flip7 vale ×2',                     cost: 8, rarity: 'uncommon' },
-  { id: 'joker_stoic',    type: 'joker', name: 'Estoico',      desc: 'Parou com exatamente 1 carta numérica → +1 mult permanente', cost: 5, rarity: 'common' },
-  { id: 'joker_phoenix',  type: 'joker', name: 'Fênix',      desc: 'Bust gera +5 pts',                  cost: 5, rarity: 'common' },
-  { id: 'joker_banker',   type: 'joker', name: 'Banqueiro',  desc: 'Toda mão jogada +$1',               cost: 6, rarity: 'uncommon' },
-  { id: 'joker_pentacle', type: 'joker', name: 'Pentâculo',  desc: 'Flip5 → +15 pts',                   cost: 6, rarity: 'common' },
-  { id: 'joker_catalyst', type: 'joker', name: 'Catalisador', desc: 'Flip5 → Score ×2',                 cost: 8, rarity: 'uncommon' },
-  { id: 'joker_accumulator', type: 'joker', name: 'Acumulador', desc: 'Flip5 no run → +1 mult permanente', cost: 9, rarity: 'rare' },
-  { id: 'joker_daredevil',type: 'joker', name: 'Temerário',  desc: 'Cada bust +3 mult próxima mão',     cost: 9, rarity: 'rare' },
+  // ── JOKERS ──
+  { id:'joker_greedy',     type:'joker', name:'Avarento',    desc:'+10 pts em toda mão não-bust',                       cost:6,  rarity:'common'   },
+  { id:'joker_stoic',      type:'joker', name:'Estoico',     desc:'Parou com 1 carta numérica → +1 mult perm',          cost:5,  rarity:'common'   },
+  { id:'joker_phoenix',    type:'joker', name:'Fênix',       desc:'Bust → ganha metade do score atual',                 cost:5,  rarity:'common'   },
+  { id:'joker_banker',     type:'joker', name:'Banqueiro',   desc:'Toda mão não-bust → +$1',                            cost:6,  rarity:'uncommon' },
+  { id:'joker_flip7fan',   type:'joker', name:'Fanático',    desc:'Flip7 → Score ×3',                                   cost:9,  rarity:'uncommon' },
+  { id:'joker_daredevil',  type:'joker', name:'Temerário',   desc:'Bust → +5 mult perm (acumulativo)',                  cost:9,  rarity:'rare'     },
+  { id:'joker_pentacle',   type:'joker', name:'Pentâculo',   desc:'Flip5 → +15 pts',                                    cost:6,  rarity:'common'   },
+  { id:'joker_catalyst',   type:'joker', name:'Catalisador', desc:'Flip5 → Score ×2',                                   cost:8,  rarity:'uncommon' },
+  { id:'joker_accumulator',type:'joker', name:'Acumulador',  desc:'Flip5 → +5 chips perm',                              cost:9,  rarity:'rare'     },
+  { id:'joker_disciple',   type:'joker', name:'Discípulo',   desc:'Flip3 → +0.25 mult perm',                            cost:7,  rarity:'uncommon' },
+  { id:'joker_even',       type:'joker', name:'Par',         desc:'Carta par → +1 mult (no draw)',                      cost:5,  rarity:'common'   },
+  { id:'joker_odd',        type:'joker', name:'Ímpar',       desc:'Carta ímpar → +1 mult (no draw)',                    cost:5,  rarity:'common'   },
+  { id:'joker_humble',     type:'joker', name:'Humilde',     desc:'Carta 0 ou 1 → mult ×1.5 (no draw)',                 cost:7,  rarity:'uncommon' },
+  { id:'joker_sequence',   type:'joker', name:'Sequência',   desc:'3 números consecutivos → +3 mult (no draw)',         cost:8,  rarity:'uncommon' },
+  { id:'joker_protector',  type:'joker', name:'Protetor',    desc:'A cada 3ª carta: bust bloqueado',                    cost:10, rarity:'rare'     },
+  { id:'joker_luck',       type:'joker', name:'Acaso',       desc:'Parar → +mult aleatório 1-15',                       cost:8,  rarity:'uncommon' },
+  { id:'joker_twins',      type:'joker', name:'Gêmeos',      desc:'Second Chance ativa → +2 mult perm',                 cost:9,  rarity:'rare'     },
+  { id:'joker_ascetic',    type:'joker', name:'Asceta',      desc:'Round sem comprar nada → +1 mult perm',              cost:8,  rarity:'rare'     },
 
   // ── PACKS DE CARTAS (fileira 1) ──
   // Números únicos
@@ -320,22 +424,13 @@ const SHOP_CATALOG = [
   { id: 'card_10',  type: 'card',  name: 'Carta 10',     desc: 'Adiciona 10 ao baralho (1 cópia)',     cost: 6,  value: 10, count: 1, rarity: 'uncommon' },
   { id: 'card_11',  type: 'card',  name: 'Carta 11',     desc: 'Adiciona 11 ao baralho (1 cópia)',     cost: 7,  value: 11, count: 1, rarity: 'rare' },
   { id: 'card_12',  type: 'card',  name: 'Carta 12',     desc: 'Adiciona 12 ao baralho (1 cópia)',     cost: 8,  value: 12, count: 1, rarity: 'rare' },
-  // ── BOOSTERS UNO (carta única c/ edição/selo) ──
-  { id:'booster_uno_common',   type:'booster', subtype:'uno', name:'Pack Uno',        desc:'3 cartas únicas — escolha 1',              cost:4,  rarity:'common',   picks:3, choose:1, guaranteed_rare:false },
-  { id:'booster_uno_uncommon', type:'booster', subtype:'uno', name:'Pack Uno+',       desc:'3 cartas c/ edições — escolha 1',          cost:7,  rarity:'uncommon', picks:3, choose:1, guaranteed_rare:false },
-  { id:'booster_uno_rare',     type:'booster', subtype:'uno', name:'Jumbo Uno',       desc:'5 cartas — escolha 2, 1 raro garantido',   cost:12, rarity:'rare',     picks:5, choose:2, guaranteed_rare:true  },
-  // ── BOOSTERS PACK (NxN cópias) ──
-  { id:'booster_pack_common',   type:'booster', subtype:'pack', name:'Pack Clássico',  desc:'3 opções NxN — escolha 1',                cost:5,  rarity:'common',   picks:3, choose:1 },
-  { id:'booster_pack_uncommon', type:'booster', subtype:'pack', name:'Pack Clássico+', desc:'3 opções NxN — escolha 1',                cost:8,  rarity:'uncommon', picks:3, choose:1 },
-  { id:'booster_pack_rare',     type:'booster', subtype:'pack', name:'Jumbo Clássico', desc:'5 opções NxN — escolha 2',                cost:13, rarity:'rare',     picks:5, choose:2 },
-  // ── BOOSTERS COMBO (cópias assimétricas c/ bônus) ──
-  { id:'booster_combo_common',   type:'booster', subtype:'combo', name:'Pack Combo',   desc:'até 2 cópias c/ edição ou selo',          cost:6,  rarity:'common',   picks:3, choose:1, max_copies:2 },
-  { id:'booster_combo_uncommon', type:'booster', subtype:'combo', name:'Pack Combo+',  desc:'até 3 cópias c/ edição ou selo',          cost:9,  rarity:'uncommon', picks:3, choose:1, max_copies:3 },
-  { id:'booster_combo_rare',     type:'booster', subtype:'combo', name:'Jumbo Combo',  desc:'até 3 cópias c/ edição E selo',           cost:14, rarity:'rare',     picks:5, choose:2, max_copies:3 },
-  // ── BOOSTERS JOKERS ──
-  { id:'booster_jok_common',   type:'booster', subtype:'jokers', name:'Pack de Jokers',       desc:'2 jokers — escolha 1',              cost:5,  rarity:'common',   picks:2, choose:1, guaranteed_rare:false },
-  { id:'booster_jok_uncommon', type:'booster', subtype:'jokers', name:'Pack de Jokers+',      desc:'2 jokers qualquer rar — escolha 1', cost:8,  rarity:'uncommon', picks:2, choose:1, guaranteed_rare:false },
-  { id:'booster_jok_rare',     type:'booster', subtype:'jokers', name:'Jumbo Pack de Jokers', desc:'3 jokers — escolha 1, 1 raro grtd', cost:13, rarity:'rare',     picks:3, choose:1, guaranteed_rare:true  },
+  // ── BOOSTERS ──
+  { id:'booster_num_common',   type:'booster', subtype:'numbers', name:'Pack de Números',       desc:'3 cartas — escolha 1',              cost:4,  rarity:'common',   picks:3, choose:1 },
+  { id:'booster_num_uncommon', type:'booster', subtype:'numbers', name:'Pack de Números+',      desc:'3 cartas c/ edições — escolha 1',   cost:7,  rarity:'uncommon', picks:3, choose:1 },
+  { id:'booster_num_rare',     type:'booster', subtype:'numbers', name:'Jumbo Pack de Números', desc:'5 cartas — escolha 2',              cost:12, rarity:'rare',     picks:5, choose:2 },
+  { id:'booster_jok_common',   type:'booster', subtype:'jokers',  name:'Pack de Jokers',        desc:'2 jokers — escolha 1',              cost:5,  rarity:'common',   picks:2, choose:1 },
+  { id:'booster_jok_uncommon', type:'booster', subtype:'jokers',  name:'Pack de Jokers+',       desc:'2 jokers — escolha 1',              cost:8,  rarity:'uncommon', picks:2, choose:1 },
+  { id:'booster_jok_rare',     type:'booster', subtype:'jokers',  name:'Jumbo Pack de Jokers',  desc:'3 jokers — escolha 1, 1 raro grtd', cost:13, rarity:'rare',     picks:3, choose:1, guaranteed_rare:true },
   // Cartas especiais extras
   { id: 'extra_freeze', type: 'special', name: '+ Freeze',  desc: 'Adiciona 1 Freeze ao baralho',      cost: 3,  kind: 'freeze', rarity: 'common' },
   { id: 'extra_flip2',  type: 'special', name: '+ Flip2',   desc: 'Adiciona 1 Flip2 ao baralho',       cost: 3,  kind: 'flip2',  rarity: 'common' },
@@ -360,89 +455,57 @@ function generateBoosterContents(item, state) {
   const ALL_NUMS = [0,1,2,3,4,5,6,7,8,9,10,11,12];
   const owned = new Set(state.fullDeck.filter(c=>c.kind==='number').map(c=>c.value));
 
-  if (item.subtype === 'uno') {
+  if (item.subtype === 'numbers') {
     const edPools = {
-      common:   [null,null,null,'gold','gold','relic'],
-      uncommon: [null,null,'gold','gleam','relic','ghost'],
+      common:   [null,null,null,null],
+      uncommon: [null,null,'gold','gleam','relic'],
       rare:     [null,'gold','gleam','relic','ghost','prism'],
     };
     const sealPools = {
-      common:   [null,null,null,null,'red','blue'],
-      uncommon: [null,null,null,'red','blue','gold'],
-      rare:     [null,null,'red','blue','gold','gold'],
+      common:   [null,null,null,null],
+      uncommon: [null,null,null,'red','blue'],
+      rare:     [null,null,'red','blue','gold'],
     };
-    const notOwned = ALL_NUMS.filter(n=>!owned.has(n));
-    const pool = notOwned.length >= item.picks ? notOwned : [...notOwned,...ALL_NUMS.filter(n=>owned.has(n))];
-    const cards=[]; const used=new Set(); let rareDone=false;
-    while(cards.length < item.picks) {
-      const avail=pool.filter(v=>!used.has(v));
-      if(!avail.length) break;
-      const val=avail[Math.floor(Math.random()*avail.length)];
-      used.add(val);
-      let ed=edPools[item.rarity][Math.floor(Math.random()*edPools[item.rarity].length)];
-      let seal=sealPools[item.rarity][Math.floor(Math.random()*sealPools[item.rarity].length)];
-      if(item.guaranteed_rare && !rareDone && cards.length===item.picks-1){
-        ed=['prism','ghost'][Math.floor(Math.random()*2)]; rareDone=true;
-      }
-      cards.push({kind:'number',value:val,edition:ed,seal,id:`${val}_b_${Date.now()}_${cards.length}`,_isNew:!owned.has(val)});
-    }
-    return cards;
-  }
-
-  if (item.subtype === 'pack') {
-    // Oferece valores para adicionar NxN cópias (N cópias do número N)
-    const pool = shuffle([...ALL_NUMS.filter(n=>n>0)]).slice(0, item.picks);
-    return pool.map(n=>({kind:'number',value:n,count:n,_isPack:true,id:`pack_${n}_${Date.now()}`}));
-  }
-
-  if (item.subtype === 'combo') {
-    const maxCopies = item.max_copies || 2;
-    const edPool  = item.rarity==='rare' ? ['gold','gleam','relic','ghost','prism'] : ['gold','gleam','relic'];
-    const sealPool = item.rarity==='rare' ? ['red','blue','gold'] : ['red','blue'];
-    const vals = shuffle([...ALL_NUMS.filter(n=>n>0)]).slice(0, item.picks);
-    return vals.map(val => {
-      const copies = 1 + Math.floor(Math.random() * maxCopies);
-      return Array.from({length:copies}, (_,i) => {
-        let ed=null, seal=null;
-        if(item.rarity==='rare') {
-          ed   = edPool[Math.floor(Math.random()*edPool.length)];
-          seal = sealPool[Math.floor(Math.random()*sealPool.length)];
-        } else {
-          if(Math.random()<0.5) ed   = edPool[Math.floor(Math.random()*edPool.length)];
-          else                  seal = sealPool[Math.floor(Math.random()*sealPool.length)];
-        }
-        return {kind:'number',value:val,edition:ed,seal,id:`${val}_combo_${Date.now()}_${i}`};
-      });
+    const vals = shuffle([...ALL_NUMS]).slice(0, item.picks);
+    return vals.map((val, i) => {
+      const isOwned = owned.has(val);
+      // Único: número novo → NxN cópias; Combo: já tem → 1-3 cópias (40/40/20)
+      let count;
+      if (!isOwned) { count = Math.max(1, val); }
+      else { const r = Math.random(); count = r < 0.4 ? 1 : r < 0.8 ? 2 : 3; }
+      const epPool = edPools[item.rarity];
+      const spPool = sealPools[item.rarity];
+      const ed = epPool[Math.floor(Math.random() * epPool.length)];
+      const seal = spPool[Math.floor(Math.random() * spPool.length)];
+      return { kind:'number', value:val, count, variant: isOwned?'combo':'unique',
+               edition:ed, seal, id:`${val}_bst_${Date.now()}_${i}` };
     });
   }
 
   // jokers
-  const ownedIds=state.jokers.map(j=>j.id);
-  const allowed={common:['common','uncommon'],uncommon:['common','uncommon','rare'],rare:['common','uncommon','rare']}[item.rarity];
-  let pool=SHOP_CATALOG.filter(i=>i.type==='joker'&&!ownedIds.includes(i.id)&&allowed.includes(i.rarity));
-  if(item.guaranteed_rare && !pool.some(i=>i.rarity==='rare'))
-    pool=SHOP_CATALOG.filter(i=>i.type==='joker'&&i.rarity==='rare');
-  return pickN(pool.flatMap(i=>i.rarity==='common'?[i,i,i]:i.rarity==='uncommon'?[i,i]:[i]),item.picks);
+  const ownedIds = state.jokers.map(j=>j.id);
+  const allowed = {common:['common','uncommon'],uncommon:['common','uncommon','rare'],rare:['common','uncommon','rare']}[item.rarity];
+  let pool = SHOP_CATALOG.filter(i=>i.type==='joker'&&!ownedIds.includes(i.id)&&allowed.includes(i.rarity));
+  if (item.guaranteed_rare && !pool.some(i=>i.rarity==='rare'))
+    pool = SHOP_CATALOG.filter(i=>i.type==='joker'&&i.rarity==='rare');
+  return pickN(pool.flatMap(i=>i.rarity==='common'?[i,i,i]:i.rarity==='uncommon'?[i,i]:[i]), item.picks);
 }
 
 function applyBoosterChoice(state, item, chosenIndices, contents) {
-  for(const idx of chosenIndices) {
-    const pick=contents[idx];
-    if(item.subtype==='uno') {
-      state.fullDeck.push({kind:'number',value:pick.value,edition:pick.edition,seal:pick.seal,id:pick.id});
-      addLog(state,`Uno: +${pick.value}${pick.edition?' ['+pick.edition+']':''}${pick.seal?' ('+pick.seal+')':''}`);
-    } else if(item.subtype==='pack') {
-      for(let i=0;i<pick.count;i++)
-        state.fullDeck.push({kind:'number',value:pick.value,edition:null,seal:null,id:`${pick.value}_pk_${Date.now()}_${i}`});
-      addLog(state,`Pack: +${pick.count}×${pick.value} ao baralho`);
-    } else if(item.subtype==='combo') {
-      // pick is an array of cards
-      for(const card of pick)
-        state.fullDeck.push({kind:'number',value:card.value,edition:card.edition,seal:card.seal,id:card.id});
-      addLog(state,`Combo: +${pick.length}×${pick[0].value}${pick.map(c=>(c.edition?'['+c.edition+']':'')+(c.seal?'('+c.seal+')':'')).join(' ')}`);
+  for (const idx of chosenIndices) {
+    const pick = contents[idx];
+    if (item.subtype === 'numbers') {
+      for (let i = 0; i < pick.count; i++) {
+        state.fullDeck.push({kind:'number', value:pick.value,
+          edition: i === 0 ? pick.edition : null,
+          seal:    i === 0 ? pick.seal    : null,
+          id: `${pick.value}_bst_${Date.now()}_${i}`});
+      }
+      const label = pick.variant==='unique' ? `Único ×${pick.count}` : `Combo ×${pick.count}`;
+      addLog(state, `Pack: ${label} carta ${pick.value}${pick.edition?' ['+pick.edition+']':''}${pick.seal?' ('+pick.seal+')':''}`);
     } else {
-      state.jokers.push({id:pick.id,name:pick.name,desc:pick.desc});
-      addLog(state,`Booster: joker ${pick.name}`);
+      state.jokers.push({id:pick.id, name:pick.name, desc:pick.desc});
+      addLog(state, `Pack: joker ${pick.name}`);
     }
   }
 }
@@ -480,6 +543,7 @@ function pickN(weighted, n) {
 function buyItem(state, item, targetCardId) {
   if (state.money < item.cost) return { result: 'no_money' };
   state.money -= item.cost;
+  state.boughtThisRound++;
 
   if (item.type === 'booster') {
     const contents = generateBoosterContents(item, state);
@@ -550,6 +614,15 @@ function buyItem(state, item, targetCardId) {
     return { result: 'ok' };
   }
   return { result: 'unknown' };
+}
+
+function checkAsceta(state) {
+  if (state.jokers.some(j => j.id === 'joker_ascetic') && state.boughtThisRound === 0) {
+    state.permanentMult = Math.round((state.permanentMult + 1) * 100) / 100;
+    addLog(state, `🧘 Asceta: round sem comprar → +1 mult perm → ${state.permanentMult}`);
+    return true;
+  }
+  return false;
 }
 
 function startNextRound(state) { state.round++; state.phase = 'game'; initRound(state); }
