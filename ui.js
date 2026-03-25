@@ -684,7 +684,8 @@ function onRestart() { clearAnimations(); lastOutcome=null; lastBustVal=null; st
 
 // ── TOUCH TOOLTIP SUPPORT ────────────────────────────────
 // First tap on a card with tooltip → show tooltip (block click).
-// Second tap on same card (tooltip already visible) → let click through (select).
+// Second tap on SAME card → let click through (select).
+// Tap different card → hide old tooltip, show new one (block click).
 // Tap elsewhere → dismiss tooltip.
 let _touchTipEl=null;
 document.addEventListener('touchstart', function(e) {
@@ -692,13 +693,13 @@ document.addEventListener('touchstart', function(e) {
   if(el) {
     const tip=el.querySelector('.card-tooltip');
     if(tip) {
-      if(tip.classList.contains('show-touch')) {
-        // Second tap — dismiss tooltip, let the click/selection happen
+      if(el===_touchTipEl && tip.classList.contains('show-touch')) {
+        // Second tap on SAME card — dismiss tooltip, let click through
         tip.classList.remove('show-touch');
         _touchTipEl=null;
-        return; // don't preventDefault → onclick fires
+        return;
       }
-      // First tap — show tooltip, block selection
+      // First tap (or different card) — show this tooltip, block selection
       document.querySelectorAll('.card-tooltip.show-touch').forEach(t=>t.classList.remove('show-touch'));
       tip.classList.add('show-touch');
       _touchTipEl=el;
