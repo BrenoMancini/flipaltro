@@ -111,7 +111,7 @@
     <div class="jokers-row" id="shop-jokers"><span class="joker-empty">Sem jokers</span></div>
   </div>
   <div>
-    <div class="shop-section-title">Boosters / Packs</div>
+    <div class="shop-section-title">Packs</div>
     <div class="shop-row" id="shop-row-cards"></div>
   </div>
   <div>
@@ -119,7 +119,7 @@
     <div class="shop-row" id="shop-row-jokers"></div>
   </div>
   <div>
-    <div class="shop-section-title">Upgrades</div>
+    <div class="shop-section-title">Upgrades &amp; Extras</div>
     <div class="shop-row" id="shop-row-upgrades"></div>
   </div>
   <div class="shop-pending" id="shop-pending" style="display:none">
@@ -156,16 +156,24 @@
   </div>
 </div>
 
-<!-- BOOSTER SCREEN -->
-<div id="screen-booster" class="screen" style="display:none">
-  <div class="booster-header">
-    <div class="booster-title" id="booster-title">Pack</div>
-    <div class="booster-subtitle" id="booster-subtitle">Escolha 1</div>
-  </div>
-  <div class="booster-grid" id="booster-grid"></div>
-  <div class="booster-actions">
-    <button class="btn btn-amber" onclick="cancelBooster()">Cancelar (reembolso)</button>
-    <button class="btn btn-primary" id="booster-confirm" onclick="confirmBooster()" disabled>Confirmar</button>
+<!-- PACK OPENING OVERLAY -->
+<div id="pack-overlay" class="pack-overlay" style="display:none">
+  <div class="pack-modal">
+    <div class="pack-header">
+      <span class="pack-title" id="pack-title">Pack</span>
+      <span class="pack-rarity-badge" id="pack-rarity">common</span>
+    </div>
+    <div class="pack-desc" id="pack-desc"></div>
+    <div class="pack-instruction" id="pack-instruction"></div>
+    <div class="pack-offerings" id="pack-offerings"></div>
+    <div class="pack-actions">
+      <button class="btn btn-primary" id="pack-confirm" onclick="onPackConfirm()">Adicionar ao baralho</button>
+      <button class="btn pack-refund-btn" id="pack-refund" onclick="onPackRefund()">Reembolsar ($<span id="pack-refund-cost">0</span>)</button>
+    </div>
+    <div class="pack-deck-section">
+      <div class="pack-deck-title">Seu baralho (<span id="pack-deck-count">0</span> cartas)</div>
+      <div class="shop-deck-wrap" id="pack-deck"></div>
+    </div>
   </div>
 </div>
 

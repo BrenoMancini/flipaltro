@@ -3,17 +3,20 @@
 let G = null;
 let shopItems = [];
 let pendingItem = null;
-let boosterState = { active:false, item:null, contents:[], chosen:new Set(), key:null };
-let savedShopItems = null;
 let toastTimer = null;
 let lastOutcome = null;
 let lastBustVal = null;
 let animationTimers = [];
 let tutStep = 0;
 
+// Pack opening state
+let currentPack = null;
+let currentPackKey = null;
+let packSelections = new Set();
+
 // ── SCREENS ───────────────────────────────────────────────
 function showScreen(id) {
-  ['screen-menu','screen-tutorial','screen-game','screen-shop','screen-end','screen-booster'].forEach(s => {
+  ['screen-menu','screen-tutorial','screen-game','screen-shop','screen-end'].forEach(s => {
     document.getElementById(s).style.display = (s === id) ? 'flex' : 'none';
   });
   window.scrollTo(0, 0);
@@ -301,6 +304,7 @@ function showFloatLabel(el,text) {
 // ── SHOP ───────────────────────────────────────────────────
 function renderShopFull() {
   shopItems=generateShop(G); pendingItem=null;
+  currentPack=null; currentPackKey=null; packSelections.clear();
   renderShopUI();
 }
 
@@ -316,22 +320,13 @@ function renderShopUI() {
   renderShopRows(); renderShopDeck(); renderShopJokers();
   document.getElementById('btn-remove-card').textContent=`Remover carta — $${G.removeCost}`;
   document.getElementById('shop-pending').style.display='none';
+  document.getElementById('pack-overlay').style.display='none';
   pendingItem=null;
 }
 
 function shopItemHTML(item,rowIdx,itemIdx) {
   const key=`${rowIdx}_${itemIdx}`;
   const canAfford=G.money>=item.cost;
-  if(item.type==='booster') {
-    const icon={numbers:'🃏',jokers:'⭐'}[item.subtype]||'🃏';
-    const lbl=item.choose>1?`Escolha ${item.choose} de ${item.picks}`:`Escolha 1 de ${item.picks}`;
-    return `<div class="shop-booster ${canAfford?'':'cant-afford'} rarity-${item.rarity}" onclick="clickShopItem('${key}')">
-      <div class="booster-icon">${icon}</div>
-      <div class="booster-name">${item.name}</div>
-      <div class="booster-choose">${lbl}</div>
-      <div class="booster-footer"><span class="booster-cost">$${item.cost}</span><span class="shop-item-rarity">${item.rarity}</span></div>
-    </div>`;
-  }
   return `<div class="shop-item ${canAfford?'':'cant-afford'} rarity-${item.rarity}" onclick="clickShopItem('${key}')">
     <div class="shop-item-name">${item.name}</div>
     <div class="shop-item-desc">${colorCode(item.desc)}</div>
@@ -340,28 +335,51 @@ function shopItemHTML(item,rowIdx,itemIdx) {
   </div>`;
 }
 
+function shopPackHTML(pack,rowIdx,itemIdx) {
+  const key=`${rowIdx}_${itemIdx}`;
+  const canAfford=G.money>=pack.cost;
+  const typeIcons={unico:'🎴',combo:'🔄',classico:'📦'};
+  return `<div class="shop-item shop-pack ${canAfford?'':'cant-afford'} rarity-${pack.rarity}" onclick="clickShopItem('${key}')">
+    <div class="shop-item-name">${typeIcons[pack.packType]||''} ${pack.name}</div>
+    <div class="shop-item-desc">${pack.desc}</div>
+    <div class="shop-item-cost">$${pack.cost}</div>
+    <div class="shop-item-rarity">${pack.rarity}</div>
+  </div>`;
+}
+
 function renderShopRows() {
   const {packRow,jokerRow,upgradeRow}=shopItems;
-  document.getElementById('shop-row-cards').innerHTML=packRow.map((it,i)=>shopItemHTML(it,0,i)).join('');
-  document.getElementById('shop-row-jokers').innerHTML=jokerRow.length?jokerRow.map((it,i)=>shopItemHTML(it,1,i)).join(''):'<span class="joker-empty">Sem jokers disponíveis</span>';
-  document.getElementById('shop-row-upgrades').innerHTML=upgradeRow.map((it,i)=>shopItemHTML(it,2,i)).join('');
+  document.getElementById('shop-row-cards').innerHTML=packRow.map((it,i)=>{
+    if(!it) return '<div class="shop-item shop-item-empty"><div class="shop-item-name" style="color:var(--text3)">Vazio</div></div>';
+    if(it.type==='pack') return shopPackHTML(it,0,i);
+    return shopItemHTML(it,0,i);
+  }).join('');
+  document.getElementById('shop-row-jokers').innerHTML=jokerRow.length?jokerRow.map((it,i)=>it?shopItemHTML(it,1,i):'').join(''):'<span class="joker-empty">Sem jokers disponíveis</span>';
+  document.getElementById('shop-row-upgrades').innerHTML=upgradeRow.map((it,i)=>it?shopItemHTML(it,2,i):'').join('');
+}
+
+function deckCardHTML(card, opts={}) {
+  const edL={gold:'✦',gleam:'◈',prism:'◉',ghost:'◌',relic:'⟡'};
+  const sC={red:'#e85454',blue:'#5ab4f0',gold:'#e8c84a'};
+  const sL={red:'●',blue:'◆',gold:'★'};
+  const top=card.kind==='number'?card.value:card.kind==='chips'?`+${card.value}c`:card.kind==='mult'?`+${card.value}m`:card.kind==='freeze'?'❄':card.kind==='sc'?'🛡':'+2';
+  const ed=card.edition?`<span style="font-size:9px;color:${card.edition==='gold'?'#e8c84a':card.edition==='gleam'?'#5ab4f0':card.edition==='prism'?'#a87de8':card.edition==='ghost'?'#5a5760':'#4ecb7a'}">${edL[card.edition]}</span>`:'';
+  const sl=card.seal?`<span style="font-size:9px;color:${sC[card.seal]}">${sL[card.seal]}</span>`:'';
+  const cls=`shop-card${card.edition||card.seal?' has-upgrade':''}${opts.extraCls||''}`;
+  const onclick=opts.onclick||'';
+  const dataId=opts.dataId?` data-id="${opts.dataId}"`:'';
+  return `<div class="${cls}"${dataId}${onclick?' onclick="'+onclick+'"':''} title="${cardName(card)}${card.edition?' ['+card.edition+']':''}${card.seal?' ('+card.seal+')':''}">${top}${ed}${sl}</div>`;
 }
 
 function renderShopDeck() {
   const {counts,specials}=getDeckComposition(G.fullDeck);
-  const edL={gold:'✦',gleam:'◈',prism:'◉',ghost:'◌',relic:'⟡'};
-  const sL={red:'●',blue:'◆',gold:'★'};
-  const sC={red:'#e85454',blue:'#5ab4f0',gold:'#e8c84a'};
   const cards=[
     ...Object.entries(counts).sort((a,b)=>+a[0]-+b[0]).flatMap(([val])=>G.fullDeck.filter(c=>c.kind==='number'&&String(c.value)===val)),
     ...specials
   ];
-  document.getElementById('shop-deck').innerHTML=cards.map(card=>{
-    const top=card.kind==='number'?card.value:card.kind==='chips'?`+${card.value}c`:card.kind==='mult'?`+${card.value}m`:card.kind==='freeze'?'❄':'+2';
-    const ed=card.edition?`<span style="font-size:9px;color:${card.edition==='gold'?'#e8c84a':card.edition==='gleam'?'#5ab4f0':card.edition==='prism'?'#a87de8':card.edition==='ghost'?'#5a5760':'#4ecb7a'}">${edL[card.edition]}</span>`:'';
-    const sl=card.seal?`<span style="font-size:9px;color:${sC[card.seal]}">${sL[card.seal]}</span>`:'';
-    return `<div class="shop-card${card.edition||card.seal?' has-upgrade':''}" data-id="${card.id}" onclick="selectDeckCard('${card.id}')" title="${cardName(card)}${card.edition?' ['+card.edition+']':''}${card.seal?' ('+card.seal+')':''}">${top}${ed}${sl}</div>`;
-  }).join('');
+  document.getElementById('shop-deck').innerHTML=cards.map(card=>
+    deckCardHTML(card, {dataId:card.id, onclick:`selectDeckCard('${card.id}')`})
+  ).join('');
 }
 
 function renderShopJokers() {
@@ -377,7 +395,7 @@ function getShopItemByKey(key) {
 
 function updateMoneyDisplay() {
   document.getElementById('shop-money').textContent=`$${G.money}`;
-  document.querySelectorAll('.shop-item,.shop-booster').forEach(el=>{
+  document.querySelectorAll('.shop-item,.shop-pack').forEach(el=>{
     const m=el.getAttribute('onclick')?.match(/clickShopItem\('([^']+)'\)/);
     if(!m) return;
     const it=getShopItemByKey(m[1]);
@@ -396,12 +414,19 @@ function clickShopItem(key) {
     if(el){el.classList.add('shake-no');setTimeout(()=>el.classList.remove('shake-no'),400);}
     return;
   }
-  if(item.type==='booster'){
-    savedShopItems={packRow:[...shopItems.packRow],jokerRow:[...shopItems.jokerRow],upgradeRow:[...shopItems.upgradeRow]};
-    const r=buyItem(G,item,null);
-    if(r.result==='open_booster'){ updateMoneyDisplay(); openBoosterScreen(r.item,r.contents,key); }
+
+  // New pack system
+  if(item.type==='pack'){
+    const res=buyPack(G,item);
+    if(res.result!=='ok') return;
+    currentPack=item;
+    currentPackKey=key;
+    packSelections.clear();
+    updateMoneyDisplay();
+    renderPackOpening();
     return;
   }
+
   if(item.type==='upgrade'&&(item.id==='upgrade_chips'||item.id==='upgrade_mult')){
     const kind=item.id==='upgrade_chips'?'chips':'mult';
     const cands=G.fullDeck.filter(c=>c.kind===kind);
@@ -411,7 +436,7 @@ function clickShopItem(key) {
     if(result.result==='ok'){
       showToast(`✓ ${item.name} em [${cardName(target)}]`);
       const [row,idx]=key.split('_').map(Number);
-      [shopItems.packRow,shopItems.jokerRow,shopItems.upgradeRow][row].splice(idx,1);
+      [shopItems.packRow,shopItems.jokerRow,shopItems.upgradeRow][row][idx]=null;
       renderShopRows();renderShopDeck();renderShopJokers();updateMoneyDisplay();
       document.getElementById('shop-deck-count').textContent=G.fullDeck.length;
     }
@@ -419,7 +444,7 @@ function clickShopItem(key) {
   }
   const needsTarget=item.type==='remove'||(item.type==='upgrade'&&(item.edition||item.seal));
   if(needsTarget){
-    pendingItem=item;
+    pendingItem={item,key};
     document.getElementById('shop-pending').style.display='block';
     document.getElementById('shop-pending-name').textContent=item.name;
     document.getElementById('shop-pending-desc').textContent='Clique numa carta do baralho abaixo para aplicar.';
@@ -430,7 +455,7 @@ function clickShopItem(key) {
   if(result.result==='ok'){
     showToast(`✓ Comprado: ${item.name}`);
     const [row,idx]=key.split('_').map(Number);
-    [shopItems.packRow,shopItems.jokerRow,shopItems.upgradeRow][row].splice(idx,1);
+    [shopItems.packRow,shopItems.jokerRow,shopItems.upgradeRow][row][idx]=null;
     renderShopRows();renderShopDeck();renderShopJokers();updateMoneyDisplay();
     document.getElementById('shop-deck-count').textContent=G.fullDeck.length;
   }
@@ -438,20 +463,23 @@ function clickShopItem(key) {
 
 function selectDeckCard(cardId) {
   if(!pendingItem) return;
-  const result=buyItem(G,pendingItem,cardId);
+  const {item,key}=pendingItem;
+  const result=buyItem(G,item,cardId);
   if(result.result==='ok'){
-    const it=pendingItem;
     const el=document.querySelector(`.shop-card[data-id="${cardId}"]`);
     if(el){el.classList.add('just-applied');setTimeout(()=>el.classList.remove('just-applied'),800);}
     const target=G.fullDeck.find(c=>c.id===cardId);
-    showToast(`✓ ${it.name} em [${target?cardName(target):'carta'}]`);
-    if(it.id==='remove_fixed'){
-      G.removeCost += 1;
+    showToast(`✓ ${item.name} em [${target?cardName(target):'carta'}]`);
+    if(item.id==='remove_fixed') G.removeCost += 1;
+    if(key){
+      const [row,idx]=key.split('_').map(Number);
+      [shopItems.packRow,shopItems.jokerRow,shopItems.upgradeRow][row][idx]=null;
     }
     pendingItem=null;
     document.getElementById('shop-pending').style.display='none';
     document.querySelectorAll('.shop-card').forEach(el=>el.classList.remove('selectable'));
     renderShopRows();renderShopDeck();updateMoneyDisplay();
+    document.getElementById('shop-deck-count').textContent=G.fullDeck.length;
   } else if(result.result==='no_target'){
     showToast('Erro: carta não encontrada','red');
   }
@@ -460,79 +488,122 @@ function selectDeckCard(cardId) {
 function onRemoveCard() {
   const cost=G.removeCost;
   if(G.money<cost){showToast(`✗ Sem dinheiro — precisa de $${cost}`,'red');return;}
-  pendingItem={id:'remove_fixed',type:'remove',name:'Remover carta',cost:cost};
+  pendingItem={item:{id:'remove_fixed',type:'remove',name:'Remover carta',cost:cost},key:null};
   document.getElementById('shop-pending').style.display='block';
   document.getElementById('shop-pending-name').textContent=`Remover carta ($${cost})`;
   document.getElementById('shop-pending-desc').textContent='Clique numa carta do baralho abaixo para remover.';
   document.querySelectorAll('.shop-card').forEach(el=>el.classList.add('selectable'));
 }
 
-function openBoosterScreen(item, contents, key) {
-  boosterState={active:true,item,contents,chosen:new Set(),key};
-  showScreen('screen-booster');
-  document.getElementById('booster-title').textContent=item.name;
-  document.getElementById('booster-subtitle').textContent=`Escolha ${item.choose} de ${contents.length}`;
-  const btn=document.getElementById('booster-confirm');
-  btn.disabled=true; btn.textContent=`Confirmar (0/${item.choose})`;
-  const edL={gold:'✦ Dourada',gleam:'◈ Reluzente',prism:'◉ Prisma',ghost:'◌ Fantasma',relic:'⟡ Relíquia'};
-  const edTip2={gold:'+chips ao aparecer',gleam:'+2 mult ao aparecer',prism:'+chips = score atual',ghost:'Nunca dá bust',relic:'Cava +1 extra'};
-  const sL={red:'● Verm',blue:'◆ Azul',gold:'★ Ouro'};
-  const sealTip2={red:'+1 mult ao puxar',blue:'+$1 ao terminar',gold:'×Mult no Flip7'};
-  const edC={gold:'#e8c84a',gleam:'#5ab4f0',prism:'#a87de8',ghost:'#5a5760',relic:'#4ecb7a'};
-  const rC={common:'var(--text2)',uncommon:'var(--blue)',rare:'var(--purple)'};
-  const makeCardTip = (ed, seal) => {
-    const lines=[];
-    if(ed&&edTip2[ed]) lines.push(`${edL[ed]}: ${edTip2[ed]}`);
-    if(seal&&sealTip2[seal]) lines.push(`${sL[seal]}: ${sealTip2[seal]}`);
-    return lines.length ? `<div class="card-tooltip">${lines.join('<br>')}</div>` : '';
-  };
+// ── PACK OPENING ───────────────────────────────────────────
+function renderPackOpening() {
+  const pack=currentPack;
+  if(!pack) return;
+  const overlay=document.getElementById('pack-overlay');
+  const rarityColors={common:'var(--text3)',uncommon:'var(--blue)',rare:'var(--purple)'};
 
-  if(item.subtype==='numbers') {
-    document.getElementById('booster-grid').innerHTML = contents.map((c,i)=>{
-      return `<div class="bst-card ${c.edition==='prism'||c.edition==='ghost'?'bst-rare':''}" data-idx="${i}" onclick="toggleBooster(${i})">
-        <div class="bst-val">${c.value}</div>
-        <div class="bst-ed" ${c.edition?`style="color:${edC[c.edition]}"`:''}>${c.edition?edL[c.edition]:'Sem edição'}</div>
-        ${c.seal?`<div class="bst-seal">${sL[c.seal]}</div>`:''}
-        <div class="bst-count">×${c.count}</div>
-        <div class="bst-check">✓</div>${makeCardTip(c.edition,c.seal)}</div>`;
-    }).join('');
+  document.getElementById('pack-title').textContent=pack.name;
+  const rarityEl=document.getElementById('pack-rarity');
+  rarityEl.textContent=pack.rarity;
+  rarityEl.style.color=rarityColors[pack.rarity]||'var(--text3)';
+  document.getElementById('pack-desc').textContent=pack.desc;
+  document.getElementById('pack-refund-cost').textContent=pack.cost;
+
+  if(pack.chooseCount===0){
+    document.getElementById('pack-instruction').textContent='Carta(s) do pack:';
   } else {
-    document.getElementById('booster-grid').innerHTML = contents.map((j,i)=>`
-      <div class="bst-joker ${j.rarity==='rare'?'bst-rare':''}" data-idx="${i}" onclick="toggleBooster(${i})">
-        <div class="bst-jname" style="color:${rC[j.rarity]}">${j.name}</div>
-        <div class="bst-jdesc">${j.desc}</div>
-        <div class="bst-jrar">${j.rarity}</div>
-        <div class="bst-check">✓</div></div>`).join('');
+    document.getElementById('pack-instruction').textContent=
+      `Escolha ${pack.chooseCount} opção${pack.chooseCount>1?'ões':''}:`;
+  }
+
+  const edL={gold:'✦',gleam:'◈',prism:'◉',ghost:'◌',relic:'⟡'};
+  const sC={red:'#e85454',blue:'#5ab4f0',gold:'#e8c84a'};
+  const sL={red:'●',blue:'◆',gold:'★'};
+
+  const offEl=document.getElementById('pack-offerings');
+  offEl.innerHTML=pack.offerings.map((off,i)=>{
+    const selected=packSelections.has(i);
+    const autoSel=pack.chooseCount===0;
+    const cardsHtml=off.cards.map(c=>{
+      const ed=c.edition?`<span style="font-size:10px;color:${c.edition==='gold'?'#e8c84a':c.edition==='gleam'?'#5ab4f0':c.edition==='prism'?'#a87de8':c.edition==='ghost'?'#5a5760':'#4ecb7a'}">${edL[c.edition]}</span>`:'';
+      const sl=c.seal?`<span style="font-size:10px;color:${sC[c.seal]}">${sL[c.seal]}</span>`:'';
+      return `<div class="pack-card">${c.value}${ed}${sl}</div>`;
+    }).join('');
+    const countLabel=off.cards.length>1?`<span class="pack-off-count">${off.cards.length} cartas</span>`:'';
+    return `<div class="pack-offering${selected?' selected':''}${autoSel?' auto-selected':''}" onclick="togglePackSelection(${i})">
+      <div class="pack-off-label">${off.label}</div>
+      <div class="pack-off-cards">${cardsHtml}</div>
+      ${countLabel}
+    </div>`;
+  }).join('');
+
+  // Render current deck
+  const {counts,specials}=getDeckComposition(G.fullDeck);
+  const deckCards=[
+    ...Object.entries(counts).sort((a,b)=>+a[0]-+b[0]).flatMap(([val])=>G.fullDeck.filter(c=>c.kind==='number'&&String(c.value)===val)),
+    ...specials
+  ];
+  document.getElementById('pack-deck-count').textContent=G.fullDeck.length;
+  document.getElementById('pack-deck').innerHTML=deckCards.map(card=>deckCardHTML(card)).join('');
+
+  updatePackConfirmBtn();
+  overlay.style.display='flex';
+}
+
+function togglePackSelection(idx) {
+  if(!currentPack||currentPack.chooseCount===0) return;
+  if(packSelections.has(idx)){
+    packSelections.delete(idx);
+  } else {
+    if(packSelections.size>=currentPack.chooseCount) {
+      const first=packSelections.values().next().value;
+      packSelections.delete(first);
+    }
+    packSelections.add(idx);
+  }
+  renderPackOpening();
+}
+
+function updatePackConfirmBtn() {
+  const btn=document.getElementById('pack-confirm');
+  if(!currentPack) { btn.disabled=true; return; }
+  if(currentPack.chooseCount===0) {
+    btn.disabled=false;
+    btn.textContent='Adicionar ao baralho';
+  } else {
+    const ok=packSelections.size===currentPack.chooseCount;
+    btn.disabled=!ok;
+    btn.textContent=ok?'Adicionar ao baralho':`Selecione ${currentPack.chooseCount-packSelections.size} opção${(currentPack.chooseCount-packSelections.size)>1?'ões':''}`;
   }
 }
 
-function toggleBooster(idx) {
-  const ch=boosterState.chosen, max=boosterState.item.choose;
-  ch.has(idx)?ch.delete(idx):(ch.size<max&&ch.add(idx));
-  document.querySelectorAll('.bst-card,.bst-joker,.bst-combo').forEach(el=>
-    el.classList.toggle('bst-selected',ch.has(parseInt(el.dataset.idx))));
-  const n=ch.size, btn=document.getElementById('booster-confirm');
-  btn.disabled=n<max; btn.textContent=`Confirmar (${n}/${max})`;
+function onPackConfirm() {
+  if(!currentPack) return;
+  const indices=currentPack.chooseCount===0?[0]:[...packSelections];
+  const res=confirmPack(G,currentPack,indices);
+  if(res.result==='ok'){
+    showToast(`✓ ${currentPack.name}: +${res.added.length} carta${res.added.length>1?'s':''}`);
+    const [row,idx]=currentPackKey.split('_').map(Number);
+    [shopItems.packRow,shopItems.jokerRow,shopItems.upgradeRow][row][idx]=null;
+    closePackOverlay();
+    renderShopRows();renderShopDeck();renderShopJokers();updateMoneyDisplay();
+    document.getElementById('shop-deck-count').textContent=G.fullDeck.length;
+  }
 }
 
-function confirmBooster() {
-  applyBoosterChoice(G,boosterState.item,[...boosterState.chosen],boosterState.contents);
-  const [row,idx]=boosterState.key.split('_').map(Number);
-  [shopItems.packRow,shopItems.jokerRow,shopItems.upgradeRow][row].splice(idx,1);
-  boosterState={active:false,item:null,contents:[],chosen:new Set(),key:null};
-  showScreen('screen-shop');
-  renderShopRows(); renderShopDeck(); renderShopJokers(); updateMoneyDisplay();
-  document.getElementById('shop-deck-count').textContent=G.fullDeck.length;
+function onPackRefund() {
+  if(!currentPack) return;
+  refundPack(G,currentPack);
+  showToast(`Reembolsado: ${currentPack.name} — +$${currentPack.cost}`);
+  const [row,idx]=currentPackKey.split('_').map(Number);
+  [shopItems.packRow,shopItems.jokerRow,shopItems.upgradeRow][row][idx]=null;
+  closePackOverlay();
+  renderShopRows();renderShopDeck();updateMoneyDisplay();
 }
 
-function cancelBooster() {
-  G.money += boosterState.item.cost;
-  G.boughtThisRound = Math.max(0, G.boughtThisRound - 1);
-  boosterState={active:false,item:null,contents:[],chosen:new Set(),key:null};
-  if(savedShopItems) shopItems=savedShopItems;
-  savedShopItems=null;
-  showScreen('screen-shop');
-  renderShopUI();
+function closePackOverlay() {
+  currentPack=null; currentPackKey=null; packSelections.clear();
+  document.getElementById('pack-overlay').style.display='none';
 }
 
 function cancelPending() {
