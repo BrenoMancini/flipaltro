@@ -650,7 +650,7 @@ function onDraw() {
   const result=drawCard(G);
   if     (result.result==='bust')          {lastOutcome='bust';   lastBustVal=result.bustCard?.value;}
   else if(result.result==='freeze')        {lastOutcome='frozen'; lastBustVal=null;}
-  else if(result.result==='freeze_ignored'){lastOutcome=null;     lastBustVal=null;}
+  else if(result.result==='freeze_ignored'){lastOutcome=null;     lastBustVal=null;showToast('❄ Freeze ignorado pelo Flip2!');}
   else if(result.result==='flip7')         {lastOutcome='flip7win';lastBustVal=null;}
   else if(result.result==='flip3')         {lastOutcome='flip3';  lastBustVal=null;showToast('⚡ FLIP3! +5 chips — continue cavando!');}
   else if(result.result==='flip5')         {lastOutcome='flip5';  lastBustVal=null;showToast('⭐ FLIP5! +1 mult — continue cavando!');}
