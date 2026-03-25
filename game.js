@@ -417,21 +417,7 @@ const SHOP_CATALOG = [
   { id:'joker_twins',      type:'joker', name:'Gêmeos',      desc:'Second Chance ativa → +2 mult perm',                 cost:9,  rarity:'rare'     },
   { id:'joker_ascetic',    type:'joker', name:'Asceta',      desc:'Round sem comprar nada → +1 mult perm',              cost:8,  rarity:'rare'     },
 
-  // ── PACKS DE CARTAS (fileira 1) ──
-  // Números únicos
-  { id: 'card_8',   type: 'card',  name: 'Carta 8',      desc: 'Adiciona 8 ao baralho (1 cópia)',      cost: 4,  value: 8,  count: 1, rarity: 'common' },
-  { id: 'card_9',   type: 'card',  name: 'Carta 9',      desc: 'Adiciona 9 ao baralho (1 cópia)',      cost: 5,  value: 9,  count: 1, rarity: 'uncommon' },
-  { id: 'card_10',  type: 'card',  name: 'Carta 10',     desc: 'Adiciona 10 ao baralho (1 cópia)',     cost: 6,  value: 10, count: 1, rarity: 'uncommon' },
-  { id: 'card_11',  type: 'card',  name: 'Carta 11',     desc: 'Adiciona 11 ao baralho (1 cópia)',     cost: 7,  value: 11, count: 1, rarity: 'rare' },
-  { id: 'card_12',  type: 'card',  name: 'Carta 12',     desc: 'Adiciona 12 ao baralho (1 cópia)',     cost: 8,  value: 12, count: 1, rarity: 'rare' },
-  // ── BOOSTERS ──
-  { id:'booster_num_common',   type:'booster', subtype:'numbers', name:'Pack de Números',       desc:'3 cartas — escolha 1',              cost:4,  rarity:'common',   picks:3, choose:1 },
-  { id:'booster_num_uncommon', type:'booster', subtype:'numbers', name:'Pack de Números+',      desc:'3 cartas c/ edições — escolha 1',   cost:7,  rarity:'uncommon', picks:3, choose:1 },
-  { id:'booster_num_rare',     type:'booster', subtype:'numbers', name:'Jumbo Pack de Números', desc:'5 cartas — escolha 2',              cost:12, rarity:'rare',     picks:5, choose:2 },
-  { id:'booster_jok_common',   type:'booster', subtype:'jokers',  name:'Pack de Jokers',        desc:'2 jokers — escolha 1',              cost:5,  rarity:'common',   picks:2, choose:1 },
-  { id:'booster_jok_uncommon', type:'booster', subtype:'jokers',  name:'Pack de Jokers+',       desc:'2 jokers — escolha 1',              cost:8,  rarity:'uncommon', picks:2, choose:1 },
-  { id:'booster_jok_rare',     type:'booster', subtype:'jokers',  name:'Jumbo Pack de Jokers',  desc:'3 jokers — escolha 1, 1 raro grtd', cost:13, rarity:'rare',     picks:3, choose:1, guaranteed_rare:true },
-  // Cartas especiais extras
+  // ── EXTRAS ──
   { id: 'extra_freeze', type: 'special', name: '+ Freeze',  desc: 'Adiciona 1 Freeze ao baralho',      cost: 3,  kind: 'freeze', rarity: 'common' },
   { id: 'extra_flip2',  type: 'special', name: '+ Flip2',   desc: 'Adiciona 1 Flip2 ao baralho',       cost: 3,  kind: 'flip2',  rarity: 'common' },
   { id: 'extra_chips',  type: 'special', name: '+ Chips',   desc: 'Adiciona 1 carta +5 chips ao baralho', cost: 4, kind: 'chips', value: 5, rarity: 'common' },
@@ -451,78 +437,218 @@ const SHOP_CATALOG = [
   { id: 'seal_gold', type: 'upgrade', name: 'Selo Dourado', desc: '★ No Flip7, carta ×Mult',            cost: 10, seal: 'gold', rarity: 'rare' },
 ];
 
-function generateBoosterContents(item, state) {
-  const ALL_NUMS = [0,1,2,3,4,5,6,7,8,9,10,11,12];
-  const owned = new Set(state.fullDeck.filter(c=>c.kind==='number').map(c=>c.value));
+// ============================================================
+// PACK SYSTEM — 3 tipos × 3 raridades = 9 packs
+// ============================================================
 
-  if (item.subtype === 'numbers') {
-    const edPools = {
-      common:   [null,null,null,null],
-      uncommon: [null,null,'gold','gleam','relic'],
-      rare:     [null,'gold','gleam','relic','ghost','prism'],
-    };
-    const sealPools = {
-      common:   [null,null,null,null],
-      uncommon: [null,null,null,'red','blue'],
-      rare:     [null,null,'red','blue','gold'],
-    };
-    const vals = shuffle([...ALL_NUMS]).slice(0, item.picks);
-    return vals.map((val, i) => {
-      const isOwned = owned.has(val);
-      // Único: número novo → NxN cópias; Combo: já tem → 1-3 cópias (40/40/20)
-      let count;
-      if (!isOwned) { count = Math.max(1, val); }
-      else { const r = Math.random(); count = r < 0.4 ? 1 : r < 0.8 ? 2 : 3; }
-      const epPool = edPools[item.rarity];
-      const spPool = sealPools[item.rarity];
-      const ed = epPool[Math.floor(Math.random() * epPool.length)];
-      const seal = spPool[Math.floor(Math.random() * spPool.length)];
-      return { kind:'number', value:val, count, variant: isOwned?'combo':'unique',
-               edition:ed, seal, id:`${val}_bst_${Date.now()}_${i}` };
-    });
-  }
+const COMMON_EDITIONS = ['gold'];
+const UNCOMMON_EDITIONS = ['gleam', 'relic'];
+const RARE_EDITIONS = ['prism', 'ghost'];
+const ALL_EDITIONS = ['gold', 'gleam', 'prism', 'ghost', 'relic'];
+const COMMON_SEALS = ['blue'];
+const ALL_SEALS = ['red', 'blue', 'gold'];
 
-  // jokers
-  const ownedIds = state.jokers.map(j=>j.id);
-  const allowed = {common:['common','uncommon'],uncommon:['common','uncommon','rare'],rare:['common','uncommon','rare']}[item.rarity];
-  let pool = SHOP_CATALOG.filter(i=>i.type==='joker'&&!ownedIds.includes(i.id)&&allowed.includes(i.rarity));
-  if (item.guaranteed_rare && !pool.some(i=>i.rarity==='rare'))
-    pool = SHOP_CATALOG.filter(i=>i.type==='joker'&&i.rarity==='rare');
-  return pickN(pool.flatMap(i=>i.rarity==='common'?[i,i,i]:i.rarity==='uncommon'?[i,i]:[i]), item.picks);
+function pickRandom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+
+function getOwnedValues(state) {
+  const vals = new Set();
+  for (const c of state.fullDeck) if (c.kind === 'number') vals.add(c.value);
+  return vals;
 }
 
-function applyBoosterChoice(state, item, chosenIndices, contents) {
-  for (const idx of chosenIndices) {
-    const pick = contents[idx];
-    if (item.subtype === 'numbers') {
-      for (let i = 0; i < pick.count; i++) {
-        state.fullDeck.push({kind:'number', value:pick.value,
-          edition: i === 0 ? pick.edition : null,
-          seal:    i === 0 ? pick.seal    : null,
-          id: `${pick.value}_bst_${Date.now()}_${i}`});
-      }
-      const label = pick.variant==='unique' ? `Único ×${pick.count}` : `Combo ×${pick.count}`;
-      addLog(state, `Pack: ${label} carta ${pick.value}${pick.edition?' ['+pick.edition+']':''}${pick.seal?' ('+pick.seal+')':''}`);
+function getNewValues(state) {
+  const owned = getOwnedValues(state);
+  const avail = [];
+  for (let v = 0; v <= 12; v++) if (!owned.has(v)) avail.push(v);
+  return avail;
+}
+
+function randomEffect(tier) {
+  if (tier === 'common') {
+    const ed = Math.random() < 0.35 ? pickRandom(COMMON_EDITIONS) : null;
+    const sl = Math.random() < 0.2 ? pickRandom(COMMON_SEALS) : null;
+    return { edition: ed, seal: sl };
+  }
+  if (tier === 'uncommon') {
+    const ed = Math.random() < 0.6 ? pickRandom(ALL_EDITIONS) : null;
+    const sl = Math.random() < 0.4 ? pickRandom(ALL_SEALS) : null;
+    if (!ed && !sl) return { edition: pickRandom(ALL_EDITIONS), seal: null };
+    return { edition: ed, seal: sl };
+  }
+  if (Math.random() < 0.6) {
+    return { edition: pickRandom(RARE_EDITIONS), seal: Math.random() < 0.3 ? pickRandom(ALL_SEALS) : null };
+  }
+  return { edition: Math.random() < 0.3 ? pickRandom(ALL_EDITIONS) : null, seal: pickRandom(['gold']) };
+}
+
+function guaranteedRareEffect() {
+  if (Math.random() < 0.6) {
+    return { edition: pickRandom(RARE_EDITIONS), seal: Math.random() < 0.3 ? pickRandom(ALL_SEALS) : null };
+  }
+  return { edition: Math.random() < 0.3 ? pickRandom(ALL_EDITIONS) : null, seal: 'gold' };
+}
+
+function makePackCard(value, edition, seal) {
+  return {
+    kind: 'number', value, edition: edition || null, seal: seal || null,
+    id: `${value}_gen_${Date.now()}_${Math.random().toString(36).slice(2,7)}`
+  };
+}
+
+function effectLabel(card) {
+  const edL = { gold:'✦', gleam:'◈', prism:'◉', ghost:'◌', relic:'⟡' };
+  const slL = { red:'●', blue:'◆', gold:'★' };
+  let lbl = '';
+  if (card.edition) lbl += edL[card.edition] || '';
+  if (card.seal) lbl += slL[card.seal] || '';
+  return lbl;
+}
+
+function generatePack(state, packType, rarity) {
+  const pack = { type: 'pack', packType, rarity, name: '', desc: '', cost: 0, offerings: [], chooseCount: 0 };
+
+  if (packType === 'unico') {
+    let pool = getNewValues(state);
+    if (pool.length === 0) pool = [randInt(8, 12)];
+
+    if (rarity === 'common') {
+      pack.name = 'Pack Unico'; pack.cost = 3;
+      pack.desc = '1 carta nova · edições comuns';
+      const val = pickRandom(pool);
+      const eff = randomEffect('common');
+      const card = makePackCard(val, eff.edition, eff.seal);
+      pack.offerings = [{ cards: [card], label: `${val} ${effectLabel(card)}`.trim() }];
+      pack.chooseCount = 0;
+    } else if (rarity === 'uncommon') {
+      pack.name = 'Pack Unico+'; pack.cost = 5;
+      pack.desc = '1 carta nova · qualquer edição/selo';
+      const val = pickRandom(pool);
+      const eff = randomEffect('uncommon');
+      const card = makePackCard(val, eff.edition, eff.seal);
+      pack.offerings = [{ cards: [card], label: `${val} ${effectLabel(card)}`.trim() }];
+      pack.chooseCount = 0;
     } else {
-      state.jokers.push({id:pick.id, name:pick.name, desc:pick.desc});
-      addLog(state, `Pack: joker ${pick.name}`);
+      pack.name = 'Pack Unico Jumbo'; pack.cost = 7;
+      pack.desc = '2 cartas · escolhe 1 · garantido raro';
+      const vals = shuffle(pool).slice(0, 2);
+      while (vals.length < 2) vals.push(randInt(8, 12));
+      const eff1 = guaranteedRareEffect();
+      const eff2 = randomEffect('rare');
+      const c1 = makePackCard(vals[0], eff1.edition, eff1.seal);
+      const c2 = makePackCard(vals[1], eff2.edition, eff2.seal);
+      pack.offerings = [
+        { cards: [c1], label: `${vals[0]} ${effectLabel(c1)}`.trim() },
+        { cards: [c2], label: `${vals[1]} ${effectLabel(c2)}`.trim() },
+      ];
+      pack.chooseCount = 1;
     }
   }
+
+  else if (packType === 'combo') {
+    const ownedVals = [...getOwnedValues(state)];
+    const pool = ownedVals.length ? ownedVals : [1, 2, 3, 4, 5, 6, 7];
+
+    if (rarity === 'common') {
+      pack.name = 'Pack Combo'; pack.cost = 3;
+      const val = pickRandom(pool);
+      const count = randInt(1, 3);
+      const eff = randomEffect('common');
+      const cards = [];
+      for (let i = 0; i < count; i++) cards.push(makePackCard(val, eff.edition, eff.seal));
+      pack.desc = `${count}× cópia do ${val} · edições comuns`;
+      pack.offerings = [{ cards, label: `${count}×${val} ${effectLabel(cards[0])}`.trim() }];
+      pack.chooseCount = 0;
+    } else if (rarity === 'uncommon') {
+      pack.name = 'Pack Combo+'; pack.cost = 5;
+      const val = pickRandom(pool);
+      const count = randInt(1, 3);
+      const eff = randomEffect('uncommon');
+      const cards = [];
+      for (let i = 0; i < count; i++) cards.push(makePackCard(val, eff.edition, eff.seal));
+      pack.desc = `${count}× cópia do ${val} · qualquer edição/selo`;
+      pack.offerings = [{ cards, label: `${count}×${val} ${effectLabel(cards[0])}`.trim() }];
+      pack.chooseCount = 0;
+    } else {
+      pack.name = 'Pack Combo Jumbo'; pack.cost = 8;
+      pack.desc = 'Escolhe 1 combo de 5 · garantido raro';
+      const options = [];
+      for (let i = 0; i < 5; i++) {
+        const val = pickRandom(pool);
+        const count = randInt(2, 3);
+        const eff = i === 0 ? guaranteedRareEffect() : randomEffect('rare');
+        const cards = [];
+        for (let j = 0; j < count; j++) cards.push(makePackCard(val, eff.edition, eff.seal));
+        options.push({ cards, label: `${count}×${val} ${effectLabel(cards[0])}`.trim() });
+      }
+      pack.offerings = options;
+      pack.chooseCount = 1;
+    }
+  }
+
+  else if (packType === 'classico') {
+    let newVals = getNewValues(state);
+
+    if (rarity === 'common') {
+      pack.name = 'Pack Classico'; pack.cost = 4;
+      pack.desc = '3 opções N×N · escolhe 1 · sem efeitos';
+      let pool = newVals.filter(v => v <= 7);
+      if (pool.length < 3) pool = [...pool, ...newVals.filter(v => v > 7)];
+      if (pool.length < 3) for (let v = 1; pool.length < 3; v++) if (!pool.includes(v)) pool.push(v);
+      const vals = shuffle(pool).slice(0, 3);
+      pack.offerings = vals.map(v => {
+        const cards = []; for (let i = 0; i < Math.max(1, v); i++) cards.push(makePackCard(v, null, null));
+        return { cards, label: `${Math.max(1, v)}×${v}` };
+      });
+      pack.chooseCount = 1;
+    } else if (rarity === 'uncommon') {
+      pack.name = 'Pack Classico+'; pack.cost = 6;
+      pack.desc = '3 opções melhores N×N · escolhe 1 · sem efeitos';
+      let pool = newVals.filter(v => v >= 5);
+      if (pool.length < 3) pool = [...pool, ...newVals];
+      if (pool.length < 3) for (let v = 5; pool.length < 3; v++) if (!pool.includes(v)) pool.push(v);
+      const vals = shuffle(pool).slice(0, 3);
+      pack.offerings = vals.map(v => {
+        const cards = []; for (let i = 0; i < Math.max(1, v); i++) cards.push(makePackCard(v, null, null));
+        return { cards, label: `${Math.max(1, v)}×${v}` };
+      });
+      pack.chooseCount = 1;
+    } else {
+      pack.name = 'Pack Classico Jumbo'; pack.cost = 9;
+      pack.desc = '5 opções N×N · escolhe 2 · sem efeitos';
+      let pool = newVals.length >= 5 ? newVals : [...newVals];
+      for (let v = 1; pool.length < 5; v++) if (!pool.includes(v)) pool.push(v);
+      const vals = shuffle(pool).slice(0, 5);
+      pack.offerings = vals.map(v => {
+        const cards = []; for (let i = 0; i < Math.max(1, v); i++) cards.push(makePackCard(v, null, null));
+        return { cards, label: `${Math.max(1, v)}×${v}` };
+      });
+      pack.chooseCount = 2;
+    }
+  }
+
+  return pack;
 }
+
+// ── Shop generation (conteúdo definido ao abrir) ──
 
 function generateShop(state) {
   const owned = state.jokers.map(j => j.id);
 
-  // Fileira 1: 2 boosters
-  const boosterPool = SHOP_CATALOG.filter(i => i.type === 'booster');
-  const packRow = pickN(boosterPool.flatMap(i => i.rarity==='common'?[i,i,i]:i.rarity==='uncommon'?[i,i]:[i]), 2);
+  // Fileira 1: 2 packs (tipo × raridade aleatórios, conteúdo pré-gerado)
+  const packTypes = ['unico', 'combo', 'classico'];
+  const rarityWeights = ['common','common','common','uncommon','uncommon','rare'];
+  const packRow = [];
+  for (let i = 0; i < 2; i++) {
+    packRow.push(generatePack(state, pickRandom(packTypes), pickRandom(rarityWeights)));
+  }
 
   // Fileira 2: 2 jokers não comprados
   const jokerPool = SHOP_CATALOG.filter(i => i.type === 'joker' && !owned.includes(i.id));
   const jokerRow = pickN(jokerPool.flatMap(i => i.rarity==='common'?[i,i,i]:i.rarity==='uncommon'?[i,i]:[i]), 2);
 
-  // Fileira 3: 2 upgrades (chips, mult, edições, selos)
-  const upgradePool = SHOP_CATALOG.filter(i => i.type === 'upgrade');
+  // Fileira 3: 2 upgrades/especiais
+  const upgradePool = SHOP_CATALOG.filter(i => ['upgrade','special'].includes(i.type));
   const upgradeRow = pickN(upgradePool.flatMap(i => i.rarity==='common'?[i,i,i]:i.rarity==='uncommon'?[i,i]:[i]), 2);
 
   return { packRow, jokerRow, upgradeRow };
@@ -540,30 +666,51 @@ function pickN(weighted, n) {
   return result;
 }
 
+// ── Pack operations ──
+
+function buyPack(state, pack) {
+  if (state.money < pack.cost) return { result: 'no_money' };
+  state.money -= pack.cost;
+  state.boughtThisRound++;
+  return { result: 'ok' };
+}
+
+function confirmPack(state, pack, selectedIndices) {
+  const toAdd = [];
+  if (pack.chooseCount === 0) {
+    toAdd.push(...pack.offerings[0].cards);
+  } else {
+    for (const idx of selectedIndices) {
+      if (pack.offerings[idx]) toAdd.push(...pack.offerings[idx].cards);
+    }
+  }
+  for (const card of toAdd) {
+    state.fullDeck.push({
+      kind: card.kind, value: card.value, edition: card.edition, seal: card.seal,
+      id: `${card.value}_pk_${Date.now()}_${Math.random().toString(36).slice(2,7)}`
+    });
+  }
+  addLog(state, `${pack.name}: +${toAdd.length} carta${toAdd.length > 1 ? 's' : ''} ao baralho`);
+  return { result: 'ok', added: toAdd };
+}
+
+function refundPack(state, pack) {
+  state.money += pack.cost;
+  state.boughtThisRound = Math.max(0, state.boughtThisRound - 1);
+  addLog(state, `Reembolso: ${pack.name} — +$${pack.cost}`);
+  return { result: 'ok' };
+}
+
+// ── Regular item purchase ──
+
 function buyItem(state, item, targetCardId) {
   if (state.money < item.cost) return { result: 'no_money' };
   state.money -= item.cost;
   state.boughtThisRound++;
 
-  if (item.type === 'booster') {
-    const contents = generateBoosterContents(item, state);
-    return { result: 'open_booster', contents, item };
-  }
   if (item.type === 'joker') {
     state.jokers.push({ id: item.id, name: item.name, desc: item.desc });
     addLog(state, `Comprou joker: ${item.name}`);
-    return { result: 'ok' };
-  }
-  if (item.type === 'card') {
-    for (let i = 0; i < item.value; i++)
-      state.fullDeck.push({ kind: 'number', value: item.value, edition: null, seal: null, id: `${item.value}_b_${Date.now()}_${i}` });
-    addLog(state, `+${item.value}× carta ${item.value} ao baralho (regra NxN)`);
-    return { result: 'ok' };
-  }
-  if (item.type === 'pack') {
-    for (let i = 0; i < item.count; i++)
-      state.fullDeck.push({ kind: 'number', value: item.value, edition: null, seal: null, id: `${item.value}_pk_${Date.now()}_${i}` });
-    addLog(state, `Pack: +${item.count}×${item.value} ao baralho`);
     return { result: 'ok' };
   }
   if (item.type === 'special') {
