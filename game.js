@@ -81,10 +81,29 @@ function applyEditionOnDraw(state, card) {
     addLog(state, `◉ Prisma [${cardName(card)}]: +${bonus} chips bônus → ${liveScore(state)}`);
   }
   if (card.edition === 'relic') {
-    state.mustDraw += 1;
-    addLog(state, `⟡ Relíquia [${cardName(card)}]: cava +1 extra`);
+    state.discardsLeft += 1;
+    addLog(state, `⟡ Relíquia [${cardName(card)}]: +1 descarte (${state.discardsLeft} restantes)`);
   }
   // ghost não tem efeito de draw, só evita bust
+  if (card.edition === 'mirror') {
+    // Replay the previous card on the table (excluding this one)
+    // Flip2 and Second Chance are NOT replayed — only number, chips, mult
+    const tableIdx = state.table.indexOf(card);
+    const prev = tableIdx > 0 ? state.table[tableIdx - 1] : null;
+    if (prev && ['number', 'chips', 'mult'].includes(prev.kind)) {
+      addLog(state, `🪞 Espelho [${cardName(card)}]: replica ${cardName(prev)}`);
+      if (prev.kind === 'number') state.chips += prev.value;
+      else if (prev.kind === 'chips') state.chips += prev.value;
+      else if (prev.kind === 'mult') state.mult += prev.value;
+      // Re-apply previous card's edition (not mirror to avoid infinite loop)
+      if (prev.edition && prev.edition !== 'mirror') applyEditionOnDraw(state, prev);
+      // Re-apply previous card's seal
+      if (prev.seal === 'red') { state.mult += 1; addLog(state, `● Selo Vermelho (espelho): +1 mult → ${liveScore(state)}`); }
+      if (prev.seal === 'blue') state.blueSealCount++;
+    } else {
+      addLog(state, `🪞 Espelho [${cardName(card)}]: nada para replicar`);
+    }
+  }
 }
 
 function applyJokerOnDraw(state, card) {
@@ -248,6 +267,12 @@ function drawCard(state) {
       state.mult += GAME_CONFIG.FLIP5_MULT_BONUS;
       state.flip5Done = true;
       state.flip5sThisRound++;
+      // Selo Dourado: ×Mult no Flip5
+      const goldSealCards = state.table.filter(c => c.seal === 'gold');
+      for (const gc of goldSealCards) {
+        state.mult *= 2;
+        addLog(state, `★ Selo Dourado [${cardName(gc)}]: ×2 mult → score:${liveScore(state)}`);
+      }
       addLog(state, `⭐ FLIP5! +${GAME_CONFIG.FLIP5_MULT_BONUS} mult → score:${liveScore(state)}`);
       return { result: 'flip5', card };
     }
@@ -419,7 +444,7 @@ const SHOP_CATALOG = [
 
   // ── EXTRAS ──
   { id: 'extra_freeze', type: 'special', name: '+ Freeze',  desc: 'Adiciona 1 Freeze ao baralho',      cost: 3,  kind: 'freeze', rarity: 'common' },
-  { id: 'extra_flip2',  type: 'special', name: '+ Flip2',   desc: 'Adiciona 1 Flip2 ao baralho',       cost: 3,  kind: 'flip2',  rarity: 'common' },
+
   { id: 'extra_chips',  type: 'special', name: '+ Chips',   desc: 'Adiciona 1 carta +5 chips ao baralho', cost: 4, kind: 'chips', value: 5, rarity: 'common' },
   { id: 'extra_mult',   type: 'special', name: '+ Mult',    desc: 'Adiciona 1 carta +1 mult ao baralho',  cost: 5, kind: 'mult',  value: 1, rarity: 'uncommon' },
   { id: 'second_chance', type: 'special', name: 'Second Chance', desc: 'Ao bustar, cancela o bust uma vez por mão', cost: 6, kind: 'sc', rarity: 'uncommon' },
@@ -431,10 +456,11 @@ const SHOP_CATALOG = [
   { id: 'ed_gleam',  type: 'upgrade', name: 'Ed. Reluzente',desc: '◈ +2 mult ao aparecer',              cost: 5, edition: 'gleam', rarity: 'uncommon' },
   { id: 'ed_prism',  type: 'upgrade', name: 'Ed. Prisma',   desc: '◉ Pontua score atual como bônus',    cost: 8, edition: 'prism', rarity: 'rare' },
   { id: 'ed_ghost',  type: 'upgrade', name: 'Ed. Fantasma', desc: '◌ Nunca dá bust, pontua normalmente',cost: 9, edition: 'ghost', rarity: 'rare' },
-  { id: 'ed_relic',  type: 'upgrade', name: 'Ed. Relíquia', desc: '⟡ Ao aparecer, cava +1 extra',       cost: 6, edition: 'relic', rarity: 'uncommon' },
+  { id: 'ed_relic',  type: 'upgrade', name: 'Ed. Relíquia', desc: '⟡ Ao aparecer, +1 descarte',          cost: 6, edition: 'relic', rarity: 'uncommon' },
+  { id: 'ed_mirror', type: 'upgrade', name: 'Ed. Espelho',  desc: '🪞 Ao aparecer, replica a carta anterior', cost: 7, edition: 'mirror', rarity: 'rare' },
   { id: 'seal_red',  type: 'upgrade', name: 'Selo Vermelho',desc: '● +1 mult por carta puxada nessa mão',cost: 5, seal: 'red',  rarity: 'uncommon' },
   { id: 'seal_blue', type: 'upgrade', name: 'Selo Azul',    desc: '◆ +$1 por carta puxada ao terminar', cost: 4, seal: 'blue', rarity: 'common' },
-  { id: 'seal_gold', type: 'upgrade', name: 'Selo Dourado', desc: '★ No Flip7, carta ×Mult',            cost: 10, seal: 'gold', rarity: 'rare' },
+  { id: 'seal_gold', type: 'upgrade', name: 'Selo Dourado', desc: '★ No Flip5, carta ×2 Mult',           cost: 8, seal: 'gold', rarity: 'rare' },
 ];
 
 // ============================================================
@@ -443,8 +469,8 @@ const SHOP_CATALOG = [
 
 const COMMON_EDITIONS = ['gold'];
 const UNCOMMON_EDITIONS = ['gleam', 'relic'];
-const RARE_EDITIONS = ['prism', 'ghost'];
-const ALL_EDITIONS = ['gold', 'gleam', 'prism', 'ghost', 'relic'];
+const RARE_EDITIONS = ['prism', 'ghost', 'mirror'];
+const ALL_EDITIONS = ['gold', 'gleam', 'prism', 'ghost', 'relic', 'mirror'];
 const COMMON_SEALS = ['blue'];
 const ALL_SEALS = ['red', 'blue', 'gold'];
 
@@ -497,7 +523,7 @@ function makePackCard(value, edition, seal) {
 }
 
 function effectLabel(card) {
-  const edL = { gold:'✦', gleam:'◈', prism:'◉', ghost:'◌', relic:'⟡' };
+  const edL = { gold:'✦', gleam:'◈', prism:'◉', ghost:'◌', relic:'⟡', mirror:'🪞' };
   const slL = { red:'●', blue:'◆', gold:'★' };
   let lbl = '';
   if (card.edition) lbl += edL[card.edition] || '';
