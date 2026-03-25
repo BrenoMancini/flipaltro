@@ -104,12 +104,12 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .card-mult   { background: var(--orange-bg); border-color: var(--orange); color: var(--orange); font-size: 11px; }
 .card-sub    { font-size: 8px; position: absolute; bottom: 4px; color: var(--text3); font-family: 'DM Mono', monospace; }
 .card-edition { position: absolute; top: 3px; right: 3px; font-size: 9px; line-height: 1; }
-.card-ed-gold  { color: var(--accent); } .card-ed-gleam { color: var(--blue); }
-.card-ed-prism { color: var(--purple); } .card-ed-ghost { color: var(--text3); } .card-ed-relic { color: var(--green); } .card-ed-mirror { color: #8ecae6; }
-.card-seal { position: absolute; bottom: 3px; left: 3px; font-size: 8px; font-weight: 700; width: 12px; height: 12px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'DM Mono', monospace; }
-.seal-red  { background: var(--red);    color: #fff; }
-.seal-blue { background: var(--blue);   color: #000; }
-.seal-gold { background: var(--accent); color: #000; }
+.card-ed-gold  { color: #e8c84a; } .card-ed-gleam { color: #5ab4f0; }
+.card-ed-prism { color: #a87de8; } .card-ed-ghost { color: #ffffff; } .card-ed-relic { color: #4ecb7a; } .card-ed-mirror { color: #00e5ff; }
+.card-seal { position: absolute; bottom: 3px; left: 3px; font-size: 9px; line-height: 1; font-weight: 700; font-family: 'DM Mono', monospace; }
+.seal-red  { color: #e85454; }
+.seal-blue { color: #5ab4f0; }
+.seal-gold { color: #e8c84a; }
 
 /* ── PILES ── */
 .piles-row { display: flex; gap: 8px; align-items: flex-start; }
