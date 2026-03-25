@@ -511,47 +511,60 @@ function generatePack(state, packType, rarity) {
   if (packType === 'unico') {
     let pool = getNewValues(state);
     if (pool.length === 0) pool = [randInt(8, 12)];
+    // Fill pool to at least 5 unique values
+    while (pool.length < 5) pool.push(randInt(8, 12));
 
-    // Único always guarantees at least edition or seal
-    function guaranteedEffect(tier) {
-      let eff = randomEffect(tier);
-      if (!eff.edition && !eff.seal) {
-        if (tier === 'common') eff.edition = pickRandom(COMMON_EDITIONS);
-        else eff.edition = pickRandom(ALL_EDITIONS);
-      }
-      return eff;
-    }
+    // Pick 5 distinct values (or repeat if not enough)
+    const vals = shuffle([...pool]).slice(0, 5);
+    while (vals.length < 5) vals.push(pickRandom(pool));
 
     if (rarity === 'common') {
-      pack.name = 'Pack Unico'; pack.cost = 3;
-      pack.desc = '1 carta nova · edições comuns';
-      const val = pickRandom(pool);
-      const eff = guaranteedEffect('common');
-      const card = makePackCard(val, eff.edition, eff.seal);
-      pack.offerings = [{ cards: [card], label: `${val} ${effectLabel(card)}`.trim() }];
-      pack.chooseCount = 0;
-    } else if (rarity === 'uncommon') {
-      pack.name = 'Pack Unico+'; pack.cost = 5;
-      pack.desc = '1 carta nova · qualquer edição/selo';
-      const val = pickRandom(pool);
-      const eff = guaranteedEffect('uncommon');
-      const card = makePackCard(val, eff.edition, eff.seal);
-      pack.offerings = [{ cards: [card], label: `${val} ${effectLabel(card)}`.trim() }];
-      pack.chooseCount = 0;
-    } else {
-      pack.name = 'Pack Unico Jumbo'; pack.cost = 7;
-      pack.desc = '2 cartas · escolhe 1 · garantido raro';
-      const vals = shuffle(pool).slice(0, 2);
-      while (vals.length < 2) vals.push(randInt(8, 12));
-      const eff1 = guaranteedRareEffect();
-      const eff2 = guaranteedEffect('rare');
-      const c1 = makePackCard(vals[0], eff1.edition, eff1.seal);
-      const c2 = makePackCard(vals[1], eff2.edition, eff2.seal);
-      pack.offerings = [
-        { cards: [c1], label: `${vals[0]} ${effectLabel(c1)}`.trim() },
-        { cards: [c2], label: `${vals[1]} ${effectLabel(c2)}`.trim() },
-      ];
+      pack.name = 'Pack Único'; pack.cost = 3;
+      pack.desc = '5 cartas novas · escolhe 1 · 1 com edição/selo comum';
+      // 4 clean + 1 with common edition OR common seal (50/50, never both)
+      const special = Math.random() < 0.5
+        ? { edition: pickRandom(COMMON_EDITIONS), seal: null }
+        : { edition: null, seal: pickRandom(COMMON_SEALS) };
+      const cards = vals.map((v, i) => i === 4
+        ? makePackCard(v, special.edition, special.seal)
+        : makePackCard(v, null, null));
+      const shuffled = shuffle(cards);
+      pack.offerings = shuffled.map(c => ({ cards: [c], label: `${c.value} ${effectLabel(c)}`.trim() }));
       pack.chooseCount = 1;
+    } else if (rarity === 'uncommon') {
+      pack.name = 'Pack Único+'; pack.cost = 5;
+      pack.desc = '5 cartas novas · escolhe 1 · 1 edição + 1 selo';
+      // 3 clean + 1 with any edition (no seal) + 1 with any seal (no edition)
+      const cards = vals.map((v, i) => {
+        if (i === 3) return makePackCard(v, pickRandom(ALL_EDITIONS), null);
+        if (i === 4) return makePackCard(v, null, pickRandom(ALL_SEALS));
+        return makePackCard(v, null, null);
+      });
+      const shuffled = shuffle(cards);
+      pack.offerings = shuffled.map(c => ({ cards: [c], label: `${c.value} ${effectLabel(c)}`.trim() }));
+      pack.chooseCount = 1;
+    } else {
+      pack.name = 'Pack Único Jumbo'; pack.cost = 7;
+      pack.desc = '5 cartas · escolhe 2 · 1 edição rara garantida';
+      // 2 clean + 2 with edition OR seal + 1 guaranteed rare edition (Prism/Ghost)
+      const cards = vals.map((v, i) => {
+        if (i === 2) return makePackCard(v, Math.random() < 0.5 ? pickRandom(ALL_EDITIONS) : null, Math.random() < 0.5 ? pickRandom(ALL_SEALS) : null);
+        if (i === 3) return makePackCard(v, Math.random() < 0.5 ? pickRandom(ALL_EDITIONS) : null, Math.random() < 0.5 ? pickRandom(ALL_SEALS) : null);
+        if (i === 4) return makePackCard(v, pickRandom(RARE_EDITIONS), null);
+        return makePackCard(v, null, null);
+      });
+      // Ensure slots 2-3 have at least one effect, never both
+      for (let k = 2; k <= 3; k++) {
+        const c = cards[k];
+        if (c.edition && c.seal) { c.seal = null; } // never both
+        if (!c.edition && !c.seal) { // ensure at least one
+          if (Math.random() < 0.5) c.edition = pickRandom(ALL_EDITIONS);
+          else c.seal = pickRandom(ALL_SEALS);
+        }
+      }
+      const shuffled = shuffle(cards);
+      pack.offerings = shuffled.map(c => ({ cards: [c], label: `${c.value} ${effectLabel(c)}`.trim() }));
+      pack.chooseCount = 2;
     }
   }
 
