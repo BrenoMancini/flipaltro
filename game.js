@@ -551,24 +551,32 @@ function generatePack(state, packType, rarity) {
 
     if (rarity === 'common') {
       pack.name = 'Pack Combo'; pack.cost = 3;
-      const val = pickRandom(pool);
-      const count = randInt(1, 3);
-      const eff = randomEffect('common');
-      const cards = [];
-      for (let i = 0; i < count; i++) cards.push(makePackCard(val, eff.edition, eff.seal));
-      pack.desc = `${count}× cópia do ${val} · edições comuns`;
-      pack.offerings = [{ cards, label: `${count}×${val} ${effectLabel(cards[0])}`.trim() }];
-      pack.chooseCount = 0;
+      pack.desc = '3 combos · escolhe 1 · edições comuns';
+      const options = [];
+      for (let i = 0; i < 3; i++) {
+        const val = pickRandom(pool);
+        const count = randInt(1, 3);
+        const eff = randomEffect('common');
+        const cards = [];
+        for (let j = 0; j < count; j++) cards.push(makePackCard(val, eff.edition, eff.seal));
+        options.push({ cards, label: `${count}×${val} ${effectLabel(cards[0])}`.trim() });
+      }
+      pack.offerings = options;
+      pack.chooseCount = 1;
     } else if (rarity === 'uncommon') {
       pack.name = 'Pack Combo+'; pack.cost = 5;
-      const val = pickRandom(pool);
-      const count = randInt(1, 3);
-      const eff = randomEffect('uncommon');
-      const cards = [];
-      for (let i = 0; i < count; i++) cards.push(makePackCard(val, eff.edition, eff.seal));
-      pack.desc = `${count}× cópia do ${val} · qualquer edição/selo`;
-      pack.offerings = [{ cards, label: `${count}×${val} ${effectLabel(cards[0])}`.trim() }];
-      pack.chooseCount = 0;
+      pack.desc = '3 combos · escolhe 1 · qualquer edição/selo';
+      const options = [];
+      for (let i = 0; i < 3; i++) {
+        const val = pickRandom(pool);
+        const count = randInt(1, 3);
+        const eff = randomEffect('uncommon');
+        const cards = [];
+        for (let j = 0; j < count; j++) cards.push(makePackCard(val, eff.edition, eff.seal));
+        options.push({ cards, label: `${count}×${val} ${effectLabel(cards[0])}`.trim() });
+      }
+      pack.offerings = options;
+      pack.chooseCount = 1;
     } else {
       pack.name = 'Pack Combo Jumbo'; pack.cost = 8;
       pack.desc = 'Escolhe 1 combo de 5 · garantido raro';

@@ -524,16 +524,14 @@ function renderPackOpening() {
   offEl.innerHTML=pack.offerings.map((off,i)=>{
     const selected=packSelections.has(i);
     const autoSel=pack.chooseCount===0;
-    const cardsHtml=off.cards.map(c=>{
-      const ed=c.edition?`<span style="font-size:10px;color:${c.edition==='gold'?'#e8c84a':c.edition==='gleam'?'#5ab4f0':c.edition==='prism'?'#a87de8':c.edition==='ghost'?'#5a5760':'#4ecb7a'}">${edL[c.edition]}</span>`:'';
-      const sl=c.seal?`<span style="font-size:10px;color:${sC[c.seal]}">${sL[c.seal]}</span>`:'';
-      return `<div class="pack-card">${c.value}${ed}${sl}</div>`;
-    }).join('');
-    const countLabel=off.cards.length>1?`<span class="pack-off-count">${off.cards.length} cartas</span>`:'';
+    // Show 1 representative card with ×N badge
+    const c=off.cards[0];
+    const count=off.cards.length;
+    const ed=c.edition?`<span class="card-edition card-ed-${c.edition}">${edL[c.edition]}</span>`:'';
+    const sl=c.seal?`<span class="card-seal seal-${c.seal}">${c.seal[0].toUpperCase()}</span>`:'';
+    const countBadge=count>1?`<span class="pack-card-count">×${count}</span>`:'';
     return `<div class="pack-offering${selected?' selected':''}${autoSel?' auto-selected':''}" onclick="togglePackSelection(${i})">
-      <div class="pack-off-label">${off.label}</div>
-      <div class="pack-off-cards">${cardsHtml}</div>
-      ${countLabel}
+      <div class="pack-card">${c.value}${ed}${sl}${countBadge}</div>
     </div>`;
   }).join('');
 
