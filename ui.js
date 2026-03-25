@@ -362,13 +362,19 @@ function deckCardHTML(card, opts={}) {
   const edL={gold:'✦',gleam:'◈',prism:'◉',ghost:'◌',relic:'⟡'};
   const sC={red:'#e85454',blue:'#5ab4f0',gold:'#e8c84a'};
   const sL={red:'●',blue:'◆',gold:'★'};
+  const edTip={gold:'+chips ao aparecer',gleam:'+2 mult ao aparecer',prism:'+chips = score atual',ghost:'Nunca dá bust',relic:'Cava +1 extra'};
+  const sealTip={red:'+1 mult ao puxar',blue:'+$1 ao terminar',gold:'×Mult no Flip7'};
   const top=card.kind==='number'?card.value:card.kind==='chips'?`+${card.value}c`:card.kind==='mult'?`+${card.value}m`:card.kind==='freeze'?'❄':card.kind==='sc'?'🛡':'+2';
   const ed=card.edition?`<span style="font-size:9px;color:${card.edition==='gold'?'#e8c84a':card.edition==='gleam'?'#5ab4f0':card.edition==='prism'?'#a87de8':card.edition==='ghost'?'#5a5760':'#4ecb7a'}">${edL[card.edition]}</span>`:'';
   const sl=card.seal?`<span style="font-size:9px;color:${sC[card.seal]}">${sL[card.seal]}</span>`:'';
+  const tipLines=[];
+  if(card.edition&&edTip[card.edition]) tipLines.push(`${edL[card.edition]} ${edTip[card.edition]}`);
+  if(card.seal&&sealTip[card.seal]) tipLines.push(`${sL[card.seal]} ${sealTip[card.seal]}`);
+  const tip=tipLines.length?`<div class="card-tooltip">${tipLines.join('<br>')}</div>`:'';
   const cls=`shop-card${card.edition||card.seal?' has-upgrade':''}${opts.extraCls||''}`;
   const onclick=opts.onclick||'';
   const dataId=opts.dataId?` data-id="${opts.dataId}"`:'';
-  return `<div class="${cls}"${dataId}${onclick?' onclick="'+onclick+'"':''} title="${cardName(card)}${card.edition?' ['+card.edition+']':''}${card.seal?' ('+card.seal+')':''}">${top}${ed}${sl}</div>`;
+  return `<div class="${cls}"${dataId}${onclick?' onclick="'+onclick+'"':''}>${top}${ed}${sl}${tip}</div>`;
 }
 
 function renderShopDeck() {
@@ -519,6 +525,8 @@ function renderPackOpening() {
   const edL={gold:'✦',gleam:'◈',prism:'◉',ghost:'◌',relic:'⟡'};
   const sC={red:'#e85454',blue:'#5ab4f0',gold:'#e8c84a'};
   const sL={red:'●',blue:'◆',gold:'★'};
+  const edTip={gold:'+chips ao aparecer',gleam:'+2 mult ao aparecer',prism:'+chips = score atual',ghost:'Nunca dá bust',relic:'Cava +1 extra'};
+  const sealTip={red:'+1 mult ao puxar',blue:'+$1 ao terminar',gold:'×Mult no Flip7'};
 
   const offEl=document.getElementById('pack-offerings');
   offEl.innerHTML=pack.offerings.map((off,i)=>{
@@ -530,8 +538,12 @@ function renderPackOpening() {
     const ed=c.edition?`<span class="card-edition card-ed-${c.edition}">${edL[c.edition]}</span>`:'';
     const sl=c.seal?`<span class="card-seal seal-${c.seal}">${c.seal[0].toUpperCase()}</span>`:'';
     const countBadge=count>1?`<span class="pack-card-count">×${count}</span>`:'';
+    const tipLines=[];
+    if(c.edition&&edTip[c.edition]) tipLines.push(`${edL[c.edition]} ${edTip[c.edition]}`);
+    if(c.seal&&sealTip[c.seal]) tipLines.push(`${sL[c.seal]} ${sealTip[c.seal]}`);
+    const tip=tipLines.length?`<div class="card-tooltip">${tipLines.join('<br>')}</div>`:'';
     return `<div class="pack-offering${selected?' selected':''}${autoSel?' auto-selected':''}" onclick="togglePackSelection(${i})">
-      <div class="pack-card">${c.value}${ed}${sl}${countBadge}</div>
+      <div class="pack-card">${c.value}${ed}${sl}${countBadge}${tip}</div>
     </div>`;
   }).join('');
 
@@ -669,6 +681,18 @@ function onNext() {
 }
 
 function onRestart() { clearAnimations(); lastOutcome=null; lastBustVal=null; startGame(); }
+
+// ── TOUCH TOOLTIP SUPPORT ────────────────────────────────
+document.addEventListener('touchstart', function(e) {
+  // Hide any currently visible tooltip
+  document.querySelectorAll('.card-tooltip.show-touch').forEach(t=>t.classList.remove('show-touch'));
+  // Find if we tapped something with a tooltip
+  const el=e.target.closest('.card, .shop-card, .pack-card, .pack-offering');
+  if(el) {
+    const tip=el.querySelector('.card-tooltip');
+    if(tip) { tip.classList.add('show-touch'); e.preventDefault(); }
+  }
+}, {passive:false});
 
 // boot
 showMenu();
