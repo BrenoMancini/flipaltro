@@ -512,11 +512,21 @@ function generatePack(state, packType, rarity) {
     let pool = getNewValues(state);
     if (pool.length === 0) pool = [randInt(8, 12)];
 
+    // Único always guarantees at least edition or seal
+    function guaranteedEffect(tier) {
+      let eff = randomEffect(tier);
+      if (!eff.edition && !eff.seal) {
+        if (tier === 'common') eff.edition = pickRandom(COMMON_EDITIONS);
+        else eff.edition = pickRandom(ALL_EDITIONS);
+      }
+      return eff;
+    }
+
     if (rarity === 'common') {
       pack.name = 'Pack Unico'; pack.cost = 3;
       pack.desc = '1 carta nova · edições comuns';
       const val = pickRandom(pool);
-      const eff = randomEffect('common');
+      const eff = guaranteedEffect('common');
       const card = makePackCard(val, eff.edition, eff.seal);
       pack.offerings = [{ cards: [card], label: `${val} ${effectLabel(card)}`.trim() }];
       pack.chooseCount = 0;
@@ -524,7 +534,7 @@ function generatePack(state, packType, rarity) {
       pack.name = 'Pack Unico+'; pack.cost = 5;
       pack.desc = '1 carta nova · qualquer edição/selo';
       const val = pickRandom(pool);
-      const eff = randomEffect('uncommon');
+      const eff = guaranteedEffect('uncommon');
       const card = makePackCard(val, eff.edition, eff.seal);
       pack.offerings = [{ cards: [card], label: `${val} ${effectLabel(card)}`.trim() }];
       pack.chooseCount = 0;
@@ -534,7 +544,7 @@ function generatePack(state, packType, rarity) {
       const vals = shuffle(pool).slice(0, 2);
       while (vals.length < 2) vals.push(randInt(8, 12));
       const eff1 = guaranteedRareEffect();
-      const eff2 = randomEffect('rare');
+      const eff2 = guaranteedEffect('rare');
       const c1 = makePackCard(vals[0], eff1.edition, eff1.seal);
       const c2 = makePackCard(vals[1], eff2.edition, eff2.seal);
       pack.offerings = [

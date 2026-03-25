@@ -683,15 +683,32 @@ function onNext() {
 function onRestart() { clearAnimations(); lastOutcome=null; lastBustVal=null; startGame(); }
 
 // ── TOUCH TOOLTIP SUPPORT ────────────────────────────────
+// First tap on a card with tooltip → show tooltip (block click).
+// Second tap on same card (tooltip already visible) → let click through (select).
+// Tap elsewhere → dismiss tooltip.
+let _touchTipEl=null;
 document.addEventListener('touchstart', function(e) {
-  // Hide any currently visible tooltip
-  document.querySelectorAll('.card-tooltip.show-touch').forEach(t=>t.classList.remove('show-touch'));
-  // Find if we tapped something with a tooltip
   const el=e.target.closest('.card, .shop-card, .pack-card, .pack-offering');
   if(el) {
     const tip=el.querySelector('.card-tooltip');
-    if(tip) { tip.classList.add('show-touch'); e.preventDefault(); }
+    if(tip) {
+      if(tip.classList.contains('show-touch')) {
+        // Second tap — dismiss tooltip, let the click/selection happen
+        tip.classList.remove('show-touch');
+        _touchTipEl=null;
+        return; // don't preventDefault → onclick fires
+      }
+      // First tap — show tooltip, block selection
+      document.querySelectorAll('.card-tooltip.show-touch').forEach(t=>t.classList.remove('show-touch'));
+      tip.classList.add('show-touch');
+      _touchTipEl=el;
+      e.preventDefault();
+      return;
+    }
   }
+  // Tapped something without tooltip — clear any open tooltip
+  document.querySelectorAll('.card-tooltip.show-touch').forEach(t=>t.classList.remove('show-touch'));
+  _touchTipEl=null;
 }, {passive:false});
 
 // boot
