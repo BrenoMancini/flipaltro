@@ -151,10 +151,10 @@ function renderTable(outcome, bustVal) {
   const el = document.getElementById('ui-table');
   el.className = 'table-area' + (outcome ? ' '+outcome : '');
   if (!G.table.length) { el.innerHTML='<span class="empty-hint">Clique em Cavar para puxar uma carta</span>'; return; }
-  const edL={gold:'✦',gleam:'◈',prism:'◉',ghost:'◌',relic:'⟡',mirror:'🪞'};
+  const edL={gold:'★',gleam:'★',prism:'★',ghost:'★',relic:'★',mirror:'★'};
   const edTip={gold:'+chips ao aparecer',gleam:'+2 mult ao aparecer',prism:'+chips = score atual',ghost:'Nunca dá bust',relic:'+1 descarte',mirror:'Replica carta anterior'};
   const sC={red:'seal-red',blue:'seal-blue',gold:'seal-gold'};
-  const sL2={red:'●',blue:'◆',gold:'★'};
+  const sL2={red:'●',blue:'●',gold:'●'};
   const sealTip={red:'+1 mult ao puxar',blue:'+$1 ao terminar',gold:'×2 Mult no Flip5'};
   const sf=new Set();
   let html = G.table.map(c => {
@@ -170,7 +170,7 @@ function renderTable(outcome, bustVal) {
       top=c.value;
     }
     if(c.edition) badge+=`<span class="card-edition card-ed-${c.edition}">${edL[c.edition]||'?'}</span>`;
-    if(c.seal)    badge+=`<span class="card-seal ${sC[c.seal]||''}">${c.seal[0].toUpperCase()}</span>`;
+    if(c.seal)    badge+=`<span class="card-seal ${sC[c.seal]||''}">●</span>`;
     const tipLines=[];
     if(c.edition&&edTip[c.edition]) tipLines.push(`${edL[c.edition]} ${edTip[c.edition]}`);
     if(c.seal&&sealTip[c.seal]) tipLines.push(`${sL2[c.seal]} ${sealTip[c.seal]}`);
@@ -370,13 +370,13 @@ function renderShopRows() {
 }
 
 function deckCardHTML(card, opts={}) {
-  const edL={gold:'✦',gleam:'◈',prism:'◉',ghost:'◌',relic:'⟡',mirror:'🪞'};
+  const edL={gold:'★',gleam:'★',prism:'★',ghost:'★',relic:'★',mirror:'★'};
   const sC={red:'#e85454',blue:'#5ab4f0',gold:'#e8c84a'};
-  const sL={red:'●',blue:'◆',gold:'★'};
+  const sL={red:'●',blue:'●',gold:'●'};
   const edTip={gold:'+chips ao aparecer',gleam:'+2 mult ao aparecer',prism:'+chips = score atual',ghost:'Nunca dá bust',relic:'+1 descarte',mirror:'Replica carta anterior'};
   const sealTip={red:'+1 mult ao puxar',blue:'+$1 ao terminar',gold:'×2 Mult no Flip5'};
   const top=card.kind==='number'?card.value:card.kind==='chips'?`+${card.value}c`:card.kind==='mult'?`+${card.value}m`:card.kind==='freeze'?'❄':card.kind==='sc'?'🛡':'+2';
-  const edC={gold:'#e8c84a',gleam:'#5ab4f0',prism:'#a87de8',ghost:'#5a5760',relic:'#4ecb7a',mirror:'#8ecae6'};
+  const edC={gold:'#e8c84a',gleam:'#5ab4f0',prism:'#a87de8',ghost:'#ffffff',relic:'#4ecb7a',mirror:'#00e5ff'};
   const ed=card.edition?`<span style="font-size:9px;color:${edC[card.edition]||'#ccc'}">${edL[card.edition]}</span>`:'';
   const sl=card.seal?`<span style="font-size:9px;color:${sC[card.seal]}">${sL[card.seal]}</span>`:'';
   const tipLines=[];
@@ -534,9 +534,9 @@ function renderPackOpening() {
       `Escolha ${pack.chooseCount} opção${pack.chooseCount>1?'ões':''}:`;
   }
 
-  const edL={gold:'✦',gleam:'◈',prism:'◉',ghost:'◌',relic:'⟡',mirror:'🪞'};
+  const edL={gold:'★',gleam:'★',prism:'★',ghost:'★',relic:'★',mirror:'★'};
   const sC={red:'#e85454',blue:'#5ab4f0',gold:'#e8c84a'};
-  const sL={red:'●',blue:'◆',gold:'★'};
+  const sL={red:'●',blue:'●',gold:'●'};
   const edTip={gold:'+chips ao aparecer',gleam:'+2 mult ao aparecer',prism:'+chips = score atual',ghost:'Nunca dá bust',relic:'+1 descarte',mirror:'Replica carta anterior'};
   const sealTip={red:'+1 mult ao puxar',blue:'+$1 ao terminar',gold:'×2 Mult no Flip5'};
 
@@ -548,7 +548,7 @@ function renderPackOpening() {
     const c=off.cards[0];
     const count=off.cards.length;
     const ed=c.edition?`<span class="card-edition card-ed-${c.edition}">${edL[c.edition]}</span>`:'';
-    const sl=c.seal?`<span class="card-seal seal-${c.seal}">${c.seal[0].toUpperCase()}</span>`:'';
+    const sl=c.seal?`<span class="card-seal seal-${c.seal}">●</span>`:'';
     const countBadge=count>1?`<span class="pack-card-count">×${count}</span>`:'';
     const tipLines=[];
     if(c.edition&&edTip[c.edition]) tipLines.push(`${edL[c.edition]} ${edTip[c.edition]}`);

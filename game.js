@@ -69,20 +69,20 @@ function applyEditionOnDraw(state, card) {
     // valor base: número da carta ou 5 pra cartas especiais
     const bonus = (card.kind === 'number') ? card.value : 5;
     state.chips += bonus;
-    addLog(state, `✦ Dourada [${cardName(card)}]: +${bonus} chips → ${liveScore(state)}`);
+    addLog(state, `★ Dourada [${cardName(card)}]: +${bonus} chips → ${liveScore(state)}`);
   }
   if (card.edition === 'gleam') {
     state.mult += 2;
-    addLog(state, `◈ Reluzente [${cardName(card)}]: +2 mult → ${liveScore(state)}`);
+    addLog(state, `★ Reluzente [${cardName(card)}]: +2 mult → ${liveScore(state)}`);
   }
   if (card.edition === 'prism' && card.kind === 'number') {
     const bonus = liveScore(state);
     state.chips += bonus;
-    addLog(state, `◉ Prisma [${cardName(card)}]: +${bonus} chips bônus → ${liveScore(state)}`);
+    addLog(state, `★ Prisma [${cardName(card)}]: +${bonus} chips bônus → ${liveScore(state)}`);
   }
   if (card.edition === 'relic') {
     state.discardsLeft += 1;
-    addLog(state, `⟡ Relíquia [${cardName(card)}]: +1 descarte (${state.discardsLeft} restantes)`);
+    addLog(state, `★ Relíquia [${cardName(card)}]: +1 descarte (${state.discardsLeft} restantes)`);
   }
   // ghost não tem efeito de draw, só evita bust
   if (card.edition === 'mirror') {
@@ -91,7 +91,7 @@ function applyEditionOnDraw(state, card) {
     const tableIdx = state.table.indexOf(card);
     const prev = tableIdx > 0 ? state.table[tableIdx - 1] : null;
     if (prev && ['number', 'chips', 'mult'].includes(prev.kind)) {
-      addLog(state, `🪞 Espelho [${cardName(card)}]: replica ${cardName(prev)}`);
+      addLog(state, `★ Espelho [${cardName(card)}]: replica ${cardName(prev)}`);
       if (prev.kind === 'number') state.chips += prev.value;
       else if (prev.kind === 'chips') state.chips += prev.value;
       else if (prev.kind === 'mult') state.mult += prev.value;
@@ -101,7 +101,7 @@ function applyEditionOnDraw(state, card) {
       if (prev.seal === 'red') { state.mult += 1; addLog(state, `● Selo Vermelho (espelho): +1 mult → ${liveScore(state)}`); }
       if (prev.seal === 'blue') state.blueSealCount++;
     } else {
-      addLog(state, `🪞 Espelho [${cardName(card)}]: nada para replicar`);
+      addLog(state, `★ Espelho [${cardName(card)}]: nada para replicar`);
     }
   }
 }
@@ -271,7 +271,7 @@ function drawCard(state) {
       const goldSealCards = state.table.filter(c => c.seal === 'gold');
       for (const gc of goldSealCards) {
         state.mult *= 2;
-        addLog(state, `★ Selo Dourado [${cardName(gc)}]: ×2 mult → score:${liveScore(state)}`);
+        addLog(state, `● Selo Dourado [${cardName(gc)}]: ×2 mult → score:${liveScore(state)}`);
       }
       addLog(state, `⭐ FLIP5! +${GAME_CONFIG.FLIP5_MULT_BONUS} mult → score:${liveScore(state)}`);
       return { result: 'flip5', card };
@@ -452,15 +452,15 @@ const SHOP_CATALOG = [
   // ── UPGRADES (fileira 3) ──
   { id: 'upgrade_chips', type: 'upgrade', name: '+5 Chips', desc: 'Carta +chips do baralho vale +5',   cost: 3, rarity: 'common' },
   { id: 'upgrade_mult',  type: 'upgrade', name: '+1 Mult',  desc: 'Carta +mult do baralho vale +1',    cost: 4, rarity: 'common' },
-  { id: 'ed_gold',   type: 'upgrade', name: 'Ed. Dourada',  desc: '✦ +chips ao aparecer (qualquer carta)', cost: 4, edition: 'gold',  rarity: 'common' },
-  { id: 'ed_gleam',  type: 'upgrade', name: 'Ed. Reluzente',desc: '◈ +2 mult ao aparecer',              cost: 5, edition: 'gleam', rarity: 'uncommon' },
-  { id: 'ed_prism',  type: 'upgrade', name: 'Ed. Prisma',   desc: '◉ Pontua score atual como bônus',    cost: 8, edition: 'prism', rarity: 'rare' },
-  { id: 'ed_ghost',  type: 'upgrade', name: 'Ed. Fantasma', desc: '◌ Nunca dá bust, pontua normalmente',cost: 9, edition: 'ghost', rarity: 'rare' },
-  { id: 'ed_relic',  type: 'upgrade', name: 'Ed. Relíquia', desc: '⟡ Ao aparecer, +1 descarte',          cost: 6, edition: 'relic', rarity: 'uncommon' },
-  { id: 'ed_mirror', type: 'upgrade', name: 'Ed. Espelho',  desc: '🪞 Ao aparecer, replica a carta anterior', cost: 7, edition: 'mirror', rarity: 'rare' },
+  { id: 'ed_gold',   type: 'upgrade', name: 'Ed. Dourada',  desc: '★ +chips ao aparecer (qualquer carta)', cost: 4, edition: 'gold',  rarity: 'common' },
+  { id: 'ed_gleam',  type: 'upgrade', name: 'Ed. Reluzente',desc: '★ +2 mult ao aparecer',              cost: 5, edition: 'gleam', rarity: 'uncommon' },
+  { id: 'ed_prism',  type: 'upgrade', name: 'Ed. Prisma',   desc: '★ Pontua score atual como bônus',    cost: 8, edition: 'prism', rarity: 'rare' },
+  { id: 'ed_ghost',  type: 'upgrade', name: 'Ed. Fantasma', desc: '★ Nunca dá bust, pontua normalmente',cost: 9, edition: 'ghost', rarity: 'rare' },
+  { id: 'ed_relic',  type: 'upgrade', name: 'Ed. Relíquia', desc: '★ Ao aparecer, +1 descarte',          cost: 6, edition: 'relic', rarity: 'uncommon' },
+  { id: 'ed_mirror', type: 'upgrade', name: 'Ed. Espelho',  desc: '★ Ao aparecer, replica a carta anterior', cost: 7, edition: 'mirror', rarity: 'rare' },
   { id: 'seal_red',  type: 'upgrade', name: 'Selo Vermelho',desc: '● +1 mult por carta puxada nessa mão',cost: 5, seal: 'red',  rarity: 'uncommon' },
-  { id: 'seal_blue', type: 'upgrade', name: 'Selo Azul',    desc: '◆ +$1 por carta puxada ao terminar', cost: 4, seal: 'blue', rarity: 'common' },
-  { id: 'seal_gold', type: 'upgrade', name: 'Selo Dourado', desc: '★ No Flip5, carta ×2 Mult',           cost: 8, seal: 'gold', rarity: 'rare' },
+  { id: 'seal_blue', type: 'upgrade', name: 'Selo Azul',    desc: '● +$1 por carta puxada ao terminar', cost: 4, seal: 'blue', rarity: 'common' },
+  { id: 'seal_gold', type: 'upgrade', name: 'Selo Dourado', desc: '● No Flip5, carta ×2 Mult',           cost: 8, seal: 'gold', rarity: 'rare' },
 ];
 
 // ============================================================
@@ -523,8 +523,8 @@ function makePackCard(value, edition, seal) {
 }
 
 function effectLabel(card) {
-  const edL = { gold:'✦', gleam:'◈', prism:'◉', ghost:'◌', relic:'⟡', mirror:'🪞' };
-  const slL = { red:'●', blue:'◆', gold:'★' };
+  const edL = { gold:'★', gleam:'★', prism:'★', ghost:'★', relic:'★', mirror:'★' };
+  const slL = { red:'●', blue:'●', gold:'●' };
   let lbl = '';
   if (card.edition) lbl += edL[card.edition] || '';
   if (card.seal) lbl += slL[card.seal] || '';
@@ -598,48 +598,50 @@ function generatePack(state, packType, rarity) {
     const ownedVals = [...getOwnedValues(state)];
     const pool = ownedVals.length ? ownedVals : [1, 2, 3, 4, 5, 6, 7];
 
+    function makeCombo(val, count, edition, seal) {
+      const cards = [];
+      for (let j = 0; j < count; j++) cards.push(makePackCard(val, edition, seal));
+      return { cards, label: `${count}×${val} ${effectLabel(cards[0])}`.trim() };
+    }
+
     if (rarity === 'common') {
       pack.name = 'Pack Combo'; pack.cost = 3;
-      pack.desc = '3 combos · escolhe 1 · edições comuns';
-      const options = [];
-      for (let i = 0; i < 3; i++) {
-        const val = pickRandom(pool);
-        const count = randInt(1, 3);
-        const eff = randomEffect('common');
-        const cards = [];
-        for (let j = 0; j < count; j++) cards.push(makePackCard(val, eff.edition, eff.seal));
-        options.push({ cards, label: `${count}×${val} ${effectLabel(cards[0])}`.trim() });
+      pack.desc = '5 combos · escolhe 1';
+      // 2 clean, 2 with common ed OR common seal (50/50), 1 with uncommon edition
+      const COMMON_ED = ['gold', 'relic'];
+      const COMMON_SL = ['red', 'blue'];
+      const UNCOMMON_ED = ['gleam', 'ghost'];
+      const offerings = [];
+      for (let i = 0; i < 2; i++) offerings.push(makeCombo(pickRandom(pool), randInt(1, 3), null, null));
+      for (let i = 0; i < 2; i++) {
+        const c = randInt(1, 3);
+        if (Math.random() < 0.5) offerings.push(makeCombo(pickRandom(pool), c, pickRandom(COMMON_ED), null));
+        else offerings.push(makeCombo(pickRandom(pool), c, null, pickRandom(COMMON_SL)));
       }
-      pack.offerings = options;
+      offerings.push(makeCombo(pickRandom(pool), randInt(1, 3), pickRandom(UNCOMMON_ED), null));
+      pack.offerings = shuffle(offerings);
       pack.chooseCount = 1;
     } else if (rarity === 'uncommon') {
       pack.name = 'Pack Combo+'; pack.cost = 5;
-      pack.desc = '3 combos · escolhe 1 · qualquer edição/selo';
-      const options = [];
-      for (let i = 0; i < 3; i++) {
-        const val = pickRandom(pool);
-        const count = randInt(1, 3);
-        const eff = randomEffect('uncommon');
-        const cards = [];
-        for (let j = 0; j < count; j++) cards.push(makePackCard(val, eff.edition, eff.seal));
-        options.push({ cards, label: `${count}×${val} ${effectLabel(cards[0])}`.trim() });
-      }
-      pack.offerings = options;
+      pack.desc = '5 combos · escolhe 1';
+      // 1 clean, 2 with any edition, 2 with any seal
+      const offerings = [];
+      offerings.push(makeCombo(pickRandom(pool), randInt(1, 3), null, null));
+      for (let i = 0; i < 2; i++) offerings.push(makeCombo(pickRandom(pool), randInt(1, 3), pickRandom(ALL_EDITIONS), null));
+      for (let i = 0; i < 2; i++) offerings.push(makeCombo(pickRandom(pool), randInt(1, 3), null, pickRandom(ALL_SEALS)));
+      pack.offerings = shuffle(offerings);
       pack.chooseCount = 1;
     } else {
       pack.name = 'Pack Combo Jumbo'; pack.cost = 8;
-      pack.desc = 'Escolhe 1 combo de 5 · garantido raro';
-      const options = [];
-      for (let i = 0; i < 5; i++) {
-        const val = pickRandom(pool);
-        const count = randInt(2, 3);
-        const eff = i === 0 ? guaranteedRareEffect() : randomEffect('rare');
-        const cards = [];
-        for (let j = 0; j < count; j++) cards.push(makePackCard(val, eff.edition, eff.seal));
-        options.push({ cards, label: `${count}×${val} ${effectLabel(cards[0])}`.trim() });
-      }
-      pack.offerings = options;
-      pack.chooseCount = 1;
+      pack.desc = '5 combos · escolhe 2';
+      // 1 clean, 2 with any edition, 1 with any seal, 1 with edition+seal (unique!)
+      const offerings = [];
+      offerings.push(makeCombo(pickRandom(pool), randInt(1, 3), null, null));
+      for (let i = 0; i < 2; i++) offerings.push(makeCombo(pickRandom(pool), randInt(1, 3), pickRandom(ALL_EDITIONS), null));
+      offerings.push(makeCombo(pickRandom(pool), randInt(1, 3), null, pickRandom(ALL_SEALS)));
+      offerings.push(makeCombo(pickRandom(pool), randInt(1, 3), pickRandom(ALL_EDITIONS), pickRandom(ALL_SEALS)));
+      pack.offerings = shuffle(offerings);
+      pack.chooseCount = 2;
     }
   }
 
