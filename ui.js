@@ -329,7 +329,9 @@ function renderShopUI() {
   const topRnd = document.getElementById('shop-next-round-top');
   if(topRnd) topRnd.textContent = G.round+1;
   renderShopRows(); renderShopDeck(); renderShopJokers();
-  document.getElementById('btn-remove-card').textContent=`Remover carta — $${G.removeCost}`;
+  const rmBtn=document.getElementById('btn-remove-card');
+  rmBtn.textContent=`Remover carta — $${G.removeCost}`;
+  rmBtn.disabled=G.money<G.removeCost;
   document.getElementById('shop-pending').style.display='none';
   document.getElementById('pack-overlay').style.display='none';
   pendingItem=null;
