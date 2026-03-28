@@ -57,6 +57,7 @@ function createGameState() {
     boughtThisRound: 0,
     protectorCounter: 0,
     jokers: [], log: [],
+    discardLog: [],
   };
 }
 
@@ -134,6 +135,7 @@ function applyJokerOnDraw(state, card) {
 function initRound(state) {
   state.deck = shuffle([...state.fullDeck]);
   state.discardPile = [];
+  state.discardLog = [];
   state.handNum = 1;
   state.roundScore = 0;
   state.roundWon = false;
@@ -238,7 +240,7 @@ function drawCard(state) {
         for (const j of state.jokers)
           if (j.id === 'joker_twins') { state.permanentMult = Math.round((state.permanentMult + 2) * 100) / 100; addLog(state, `👥 Gêmeos: +2 mult perm!`); }
         addLog(state, `🛡 Second Chance! Bust no ${card.value} cancelado!`);
-        state.table.pop(); state.discardPile.push(card);
+        state.table.pop(); state.discardLog.push({ card: { ...card }, handNum: state.handNum }); state.discardPile.push(card);
         return { result: 'second_chance', card };
       }
       return endHand(state, 'bust', card);
@@ -289,6 +291,7 @@ function discardTop(state) {
   maybeReshuffle(state);
   if (state.deck.length === 0) return { result: 'empty' };
   const card = state.deck.shift();
+  state.discardLog.push({ card: { ...card }, handNum: state.handNum });
   state.discardPile.push(card);
   state.discardsLeft--;
   addLog(state, `Descartou [${cardName(card)}] do topo. (${state.discardsLeft} restantes)`);
@@ -304,6 +307,7 @@ function stopHand(state) {
 function endHand(state, reason, bustCard) {
   state.handOver = true;
   state.lastReason = reason;
+  for (const c of state.table) state.discardLog.push({ card: { ...c }, handNum: state.handNum });
   state.discardPile.push(...state.table);
   let earned = 0;
 

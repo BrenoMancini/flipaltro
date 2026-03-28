@@ -130,7 +130,7 @@ function renderGame() {
   renderTable(lastOutcome, lastBustVal);
   document.getElementById('ui-deck-count').textContent = G.deck.length;
   document.getElementById('ui-disc-count').textContent = G.discardPile.length;
-  renderDeckInfo(); renderPips(); renderJokers();
+  renderDeckInfo(); renderPips(); renderJokers(); renderDiscardPreview();
 
   const over = G.handOver;
   document.getElementById('btn-draw').disabled    = over || G.deck.length === 0;
@@ -698,6 +698,105 @@ function leaveShop() {
   startNextRound(G); render();
 }
 
+// ── DISCARD PILE ─────────────────────────────────────────
+function renderDiscardPreview() {
+  const el=document.getElementById('ui-discard-preview');
+  if(!el) return;
+  if(!G.discardLog||!G.discardLog.length){el.innerHTML='';return;}
+  const last=G.discardLog[G.discardLog.length-1].card;
+  const top=last.kind==='number'?last.value:last.kind==='chips'?`+${last.value}`:last.kind==='mult'?`+${last.value}`:last.kind==='freeze'?'❄':last.kind==='flip2'?'⚡':last.kind==='sc'?'SC':'?';
+  const edC={gold:'#e8c84a',gleam:'#5ab4f0',prism:'#a87de8',ghost:'#ffffff',relic:'#4ecb7a',mirror:'#00e5ff'};
+  const slC={red:'#e85454',blue:'#5ab4f0',gold:'#e8c84a'};
+  const ed=last.edition?`<span class="mini-badge" style="color:${edC[last.edition]}">★</span>`:'';
+  const seal=last.seal?`<span class="mini-badge" style="color:${slC[last.seal]}">●</span>`:'';
+  el.innerHTML=`<div class="discard-mini-card">${top}${ed}${seal}</div>`;
+}
+
+function animateDiscard(card) {
+  const pileEl=document.querySelector('.discard-pile-box');
+  if(!pileEl) return;
+  const el=document.createElement('div');
+  el.className='discard-fly-card';
+  el.textContent=card.kind==='number'?card.value:card.kind==='chips'?`+${card.value}c`:card.kind==='mult'?`+${card.value}m`:card.kind==='freeze'?'❄':card.kind==='flip2'?'⚡':'?';
+  const pileRect=pileEl.getBoundingClientRect();
+  el.style.position='fixed';
+  el.style.left=(pileRect.left+pileRect.width+8)+'px';
+  el.style.top=pileRect.top+'px';
+  el.style.zIndex='1000';
+  el.style.pointerEvents='none';
+  document.body.appendChild(el);
+  el.animate([
+    {transform:'scale(1)',opacity:1},
+    {transform:'scale(0.4)',opacity:0.6},
+    {transform:'scale(0)',opacity:0}
+  ],{duration:380,easing:'ease-in',fill:'forwards'}).onfinish=()=>el.remove();
+}
+
+let discardView='type';
+
+function openDiscardPopup() {
+  if(!G.discardLog||!G.discardLog.length) return;
+  document.getElementById('discard-popup').style.display='flex';
+  renderDiscardPopup();
+}
+
+function closeDiscardPopup(e) {
+  if(e&&e.target!==document.getElementById('discard-popup')) return;
+  document.getElementById('discard-popup').style.display='none';
+}
+
+function setDiscardView(view) {
+  discardView=view;
+  document.getElementById('tab-type').classList.toggle('active',view==='type');
+  document.getElementById('tab-order').classList.toggle('active',view==='order');
+  renderDiscardPopup();
+}
+
+function renderDiscardPopup() {
+  const content=document.getElementById('discard-popup-content');
+  const edC={gold:'#e8c84a',gleam:'#5ab4f0',prism:'#a87de8',ghost:'#ffffff',relic:'#4ecb7a',mirror:'#00e5ff'};
+  const slC={red:'#e85454',blue:'#5ab4f0',gold:'#e8c84a'};
+
+  function cHTML(card) {
+    const top=card.kind==='number'?card.value:card.kind==='chips'?`+${card.value}c`:card.kind==='mult'?`+${card.value}m`:card.kind==='freeze'?'❄':card.kind==='flip2'?'⚡':card.kind==='sc'?'SC':'?';
+    const ed=card.edition?`<span style="color:${edC[card.edition]};font-size:9px">★</span>`:'';
+    const seal=card.seal?`<span style="color:${slC[card.seal]};font-size:9px">●</span>`:'';
+    const badges=(ed||seal)?`<div class="card-badges">${ed}${seal}</div>`:'';
+    return `<div class="discard-card">${top}${badges}</div>`;
+  }
+
+  if(discardView==='type'){
+    const numbers=G.discardLog.filter(e=>e.card.kind==='number');
+    const specials=G.discardLog.filter(e=>e.card.kind!=='number');
+    const numGroups={};
+    for(const e of numbers){const v=e.card.value;if(!numGroups[v])numGroups[v]=[];numGroups[v].push(e.card);}
+    let html='<div class="discard-card-grid">';
+    if(Object.keys(numGroups).length){
+      html+='<div class="discard-group-label">Números</div>';
+      for(const v of Object.keys(numGroups).sort((a,b)=>+a-+b))
+        for(const card of numGroups[v]) html+=cHTML(card);
+    }
+    if(specials.length){
+      html+='<div class="discard-group-label">Especiais</div>';
+      for(const e of specials) html+=cHTML(e.card);
+    }
+    html+='</div>';
+    content.innerHTML=html;
+  } else {
+    const byHand={};
+    for(const e of G.discardLog){if(!byHand[e.handNum])byHand[e.handNum]=[];byHand[e.handNum].push(e.card);}
+    let html='';
+    const hands=Object.keys(byHand).map(Number).sort((a,b)=>b-a);
+    for(const hand of hands){
+      html+=`<div class="discard-hand-sep">Mão ${hand}</div>`;
+      html+='<div class="discard-card-grid">';
+      for(const card of [...byHand[hand]].reverse()) html+=cHTML(card);
+      html+='</div>';
+    }
+    content.innerHTML=html;
+  }
+}
+
 // ── END ────────────────────────────────────────────────────
 function renderEnd(win) {
   if(win){
@@ -741,7 +840,10 @@ function onStop() {
   playScoringAnimation(G);
 }
 
-function onDiscard() { discardTop(G); renderGame(); }
+function onDiscard() {
+  if(G.deck.length>0) animateDiscard(G.deck[0]);
+  discardTop(G); renderGame();
+}
 
 function onNext() {
   clearAnimations();
