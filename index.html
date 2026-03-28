@@ -181,6 +181,20 @@
   </div>
 </div>
 
+<div id="joker-popup" style="display:none" class="popup-overlay" onclick="closeJokerPopup(event)">
+  <div class="popup-box joker-popup-box" onclick="event.stopPropagation()">
+    <div class="popup-header">
+      <span class="popup-title" id="joker-popup-name"></span>
+      <button class="popup-close" onclick="closeJokerPopup()">✕</button>
+    </div>
+    <div class="popup-content joker-popup-content">
+      <div class="joker-popup-rarity" id="joker-popup-rarity"></div>
+      <div class="joker-popup-desc" id="joker-popup-desc"></div>
+      <button class="btn btn-confirm-joker" id="joker-popup-buy" onclick="confirmJokerBuy()">Comprar</button>
+    </div>
+  </div>
+</div>
+
 <div id="discard-popup" style="display:none" class="popup-overlay" onclick="closeDiscardPopup(event)">
   <div class="popup-box" onclick="event.stopPropagation()">
     <div class="popup-header">

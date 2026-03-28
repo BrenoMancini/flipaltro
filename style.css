@@ -321,17 +321,19 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .shop-item-joker-inner .item-name { font-size: 11px; font-weight: 700; color: var(--purple); }
 .shop-item-joker-inner .item-cost { font-size: 12px; font-weight: 700; color: var(--accent); font-family: 'DM Mono', monospace; margin-top: 4px; }
 .shop-item-joker.rarity-rare { border-color: #a87de8; box-shadow: 0 0 8px rgba(168,125,232,0.2); }
-.shop-item-joker .joker-tooltip-big {
-  display: none; position: absolute; bottom: calc(100% + 8px); left: 50%; transform: rotate(-45deg) translateX(-50%);
-  background: var(--bg3); border: 1px solid var(--purple); border-radius: var(--r2);
-  padding: 10px 14px; width: 200px; z-index: 200; pointer-events: none;
-  box-shadow: 0 4px 20px rgba(0,0,0,.4);
-  text-align: left;
+
+/* ── JOKER POPUP ── */
+.joker-popup-box { max-width: 320px; width: 90%; }
+.joker-popup-content { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
+.joker-popup-rarity { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 1px; }
+.joker-popup-desc { font-size: 13px; color: var(--text2); line-height: 1.5; }
+.btn-confirm-joker {
+  width: 100%; padding: 10px; border-radius: var(--r2);
+  background: var(--accent); color: #000; font-weight: 700; font-size: 13px;
+  border: none; cursor: pointer; font-family: 'DM Mono', monospace;
 }
-.shop-item-joker:hover .joker-tooltip-big { display: block; }
-.shop-item-joker .joker-tooltip-big .jt-name { font-size: 12px; font-weight: 700; color: var(--purple); margin-bottom: 4px; }
-.shop-item-joker .joker-tooltip-big .jt-desc { font-size: 10px; color: var(--text2); line-height: 1.4; margin-bottom: 4px; }
-.shop-item-joker .joker-tooltip-big .jt-rarity { font-size: 9px; color: var(--text3); text-transform: uppercase; }
+.btn-confirm-joker:hover { filter: brightness(1.1); }
+.btn-confirm-joker:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* ── UPGRADES (voucher/ticket) ── */
 .shop-item-upgrade {
