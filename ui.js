@@ -345,7 +345,7 @@ function updateRemoveBtn() {
 function shopPackHTML(pack,rowIdx,itemIdx) {
   const key=`${rowIdx}_${itemIdx}`;
   const canAfford=G.money>=pack.cost;
-  const typeIcons={unico:'🎴',combo:'🔄',classico:'📦'};
+  const typeIcons={unico:'🎴',combo:'🔄',classico:'📦',joker:'✨'};
   return `<div class="shop-item-pack ${canAfford?'':'cant-afford'} rarity-${pack.rarity}" onclick="clickShopItem('${key}')">
     <div class="item-icon">${typeIcons[pack.packType]||'📦'}</div>
     <div class="item-name">${pack.name}</div>
@@ -583,7 +583,19 @@ function renderPackOpening() {
   offEl.innerHTML=pack.offerings.map((off,i)=>{
     const selected=packSelections.has(i);
     const autoSel=pack.chooseCount===0;
-    // Show 1 representative card with ×N badge
+
+    // Joker pack: show joker name+desc instead of card
+    if(off.joker){
+      const j=off.joker;
+      const rarC={common:'var(--text3)',uncommon:'var(--blue)',rare:'var(--purple)'};
+      return `<div class="pack-offering pack-offering-joker${selected?' selected':''}${autoSel?' auto-selected':''}" onclick="togglePackSelection(${i})">
+        <div class="pack-joker-name">${j.name}</div>
+        <div class="pack-joker-desc">${colorCode(j.desc)}</div>
+        <div class="pack-joker-rarity" style="color:${rarC[j.rarity]||'var(--text3)'}">${j.rarity}</div>
+      </div>`;
+    }
+
+    // Card pack: show 1 representative card with ×N badge
     const c=off.cards[0];
     const count=off.cards.length;
     const ed=c.edition?`<span class="card-edition card-ed-${c.edition}">${edL[c.edition]}</span>`:'';
@@ -628,13 +640,15 @@ function togglePackSelection(idx) {
 function updatePackConfirmBtn() {
   const btn=document.getElementById('pack-confirm');
   if(!currentPack) { btn.disabled=true; return; }
+  const isJoker=currentPack.packType==='joker';
+  const confirmLabel=isJoker?'Adicionar joker':'Adicionar ao baralho';
   if(currentPack.chooseCount===0) {
     btn.disabled=false;
-    btn.textContent='Adicionar ao baralho';
+    btn.textContent=confirmLabel;
   } else {
     const ok=packSelections.size===currentPack.chooseCount;
     btn.disabled=!ok;
-    btn.textContent=ok?'Adicionar ao baralho':`Selecione ${currentPack.chooseCount-packSelections.size} opção${(currentPack.chooseCount-packSelections.size)>1?'ões':''}`;
+    btn.textContent=ok?confirmLabel:`Selecione ${currentPack.chooseCount-packSelections.size} opção${(currentPack.chooseCount-packSelections.size)>1?'ões':''}`;
   }
 }
 
@@ -643,7 +657,12 @@ function onPackConfirm() {
   const indices=currentPack.chooseCount===0?[0]:[...packSelections];
   const res=confirmPack(G,currentPack,indices);
   if(res.result==='ok'){
-    showToast(`✓ ${currentPack.name}: +${res.added.length} carta${res.added.length>1?'s':''}`);
+    if(currentPack.packType==='joker'){
+      const names=res.added.map(j=>j.name).join(', ');
+      showToast(`✓ ${currentPack.name}: +${names}`);
+    } else {
+      showToast(`✓ ${currentPack.name}: +${res.added.length} carta${res.added.length>1?'s':''}`);
+    }
     const [row,idx]=currentPackKey.split('_').map(Number);
     [shopItems.packRow,shopItems.jokerRow,shopItems.upgradeRow][row][idx]=null;
     closePackOverlay();
