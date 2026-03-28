@@ -361,15 +361,10 @@ function shopJokerHTML(item,rowIdx,itemIdx) {
   const key=`${rowIdx}_${itemIdx}`;
   const canAfford=G.money>=item.cost;
   return `<div class="shop-item-joker-wrap">
-    <div class="shop-item-joker ${canAfford?'':'cant-afford'} rarity-${item.rarity}" onclick="clickShopItem('${key}')">
+    <div class="shop-item-joker ${canAfford?'':'cant-afford'} rarity-${item.rarity}" onclick="openJokerPopup('${key}')">
       <div class="shop-item-joker-inner">
         <div class="item-name">${item.name}</div>
         <div class="item-cost">$${item.cost}</div>
-      </div>
-      <div class="joker-tooltip-big">
-        <div class="jt-name">${item.name}</div>
-        <div class="jt-desc">${colorCode(item.desc)}</div>
-        <div class="jt-rarity">${item.rarity}</div>
       </div>
     </div>
   </div>`;
@@ -743,6 +738,36 @@ function openDiscardPopup() {
 function closeDiscardPopup(e) {
   if(e&&e.target!==document.getElementById('discard-popup')) return;
   document.getElementById('discard-popup').style.display='none';
+}
+
+/* ── Joker purchase popup ── */
+let _jokerPopupKey=null;
+
+function openJokerPopup(key) {
+  const item=getShopItemByKey(key);
+  if(!item) return;
+  _jokerPopupKey=key;
+  document.getElementById('joker-popup-name').textContent=item.name;
+  document.getElementById('joker-popup-rarity').textContent=item.rarity;
+  document.getElementById('joker-popup-desc').innerHTML=colorCode(item.desc);
+  const btn=document.getElementById('joker-popup-buy');
+  const canAfford=G.money>=item.cost;
+  btn.textContent=`Comprar — $${item.cost}`;
+  btn.disabled=!canAfford;
+  document.getElementById('joker-popup').style.display='flex';
+}
+
+function closeJokerPopup(e) {
+  if(e&&e.target!==document.getElementById('joker-popup')) return;
+  document.getElementById('joker-popup').style.display='none';
+  _jokerPopupKey=null;
+}
+
+function confirmJokerBuy() {
+  if(!_jokerPopupKey) return;
+  const key=_jokerPopupKey;
+  closeJokerPopup();
+  clickShopItem(key);
 }
 
 function setDiscardView(view) {
