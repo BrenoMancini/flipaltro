@@ -689,6 +689,38 @@ function generatePack(state, packType, rarity) {
     }
   }
 
+  else if (packType === 'joker') {
+    const owned = state.jokers.map(j => j.id);
+    const allJokers = SHOP_CATALOG.filter(i => i.type === 'joker' && !owned.includes(i.id));
+
+    if (rarity === 'common') {
+      pack.name = 'Pack Joker'; pack.cost = 5;
+      pack.desc = '3 jokers · escolhe 1 · pool comum';
+      const pool = allJokers.filter(j => j.rarity === 'common');
+      const fallback = pool.length ? pool : allJokers.length ? allJokers : SHOP_CATALOG.filter(i => i.type === 'joker');
+      const picked = shuffle([...fallback]).slice(0, 3);
+      while (picked.length < 3 && fallback.length) picked.push(pickRandom(fallback));
+      pack.offerings = picked.map(j => ({ cards: [], joker: j, label: j.name }));
+      pack.chooseCount = 1;
+    } else if (rarity === 'uncommon') {
+      pack.name = 'Pack Joker+'; pack.cost = 7;
+      pack.desc = '3 jokers · escolhe 1 · pool completo';
+      const pool = allJokers.length ? allJokers : SHOP_CATALOG.filter(i => i.type === 'joker');
+      const picked = shuffle([...pool]).slice(0, 3);
+      while (picked.length < 3 && pool.length) picked.push(pickRandom(pool));
+      pack.offerings = picked.map(j => ({ cards: [], joker: j, label: j.name }));
+      pack.chooseCount = 1;
+    } else {
+      pack.name = 'Pack Joker Jumbo'; pack.cost = 10;
+      pack.desc = '5 jokers · escolhe 2 · pool completo';
+      const pool = allJokers.length ? allJokers : SHOP_CATALOG.filter(i => i.type === 'joker');
+      const picked = shuffle([...pool]).slice(0, 5);
+      while (picked.length < 5 && pool.length) picked.push(pickRandom(pool));
+      pack.offerings = picked.map(j => ({ cards: [], joker: j, label: j.name }));
+      pack.chooseCount = 2;
+    }
+  }
+
   return pack;
 }
 
@@ -698,7 +730,7 @@ function generateShop(state) {
   const owned = state.jokers.map(j => j.id);
 
   // Fileira 1: 2 packs (tipo × raridade aleatórios, conteúdo pré-gerado)
-  const packTypes = ['unico', 'combo', 'classico'];
+  const packTypes = ['unico', 'combo', 'classico', 'joker'];
   const rarityWeights = ['common','common','common','uncommon','uncommon','rare'];
   const packRow = [];
   for (let i = 0; i < 2; i++) {
@@ -738,6 +770,21 @@ function buyPack(state, pack) {
 }
 
 function confirmPack(state, pack, selectedIndices) {
+  // Joker packs: add jokers to state
+  if (pack.packType === 'joker') {
+    const added = [];
+    const indices = pack.chooseCount === 0 ? [0] : [...selectedIndices];
+    for (const idx of indices) {
+      const off = pack.offerings[idx];
+      if (off && off.joker) {
+        state.jokers.push({ id: off.joker.id, name: off.joker.name, desc: off.joker.desc });
+        added.push(off.joker);
+        addLog(state, `Comprou joker: ${off.joker.name} (pack)`);
+      }
+    }
+    return { result: 'ok', added };
+  }
+  // Card packs: add cards to deck
   const toAdd = [];
   if (pack.chooseCount === 0) {
     toAdd.push(...pack.offerings[0].cards);

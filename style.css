@@ -825,6 +825,12 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
   color: var(--accent);
   font-family: 'DM Mono', monospace;
 }
+/* joker pack offerings */
+.pack-offering-joker { min-width: 120px; }
+.pack-joker-name { font-size: 13px; font-weight: 700; color: var(--purple); }
+.pack-joker-desc { font-size: 10px; color: var(--text2); line-height: 1.4; margin-top: 2px; }
+.pack-joker-rarity { font-size: 9px; text-transform: uppercase; letter-spacing: .08em; margin-top: 4px; }
+
 .pack-actions {
   display: flex;
   gap: 8px;
