@@ -71,9 +71,13 @@
       <div class="pile-label">Deck</div>
       <div class="pile-box"><span class="pile-count" id="ui-deck-count">32</span><span class="pile-sub">cartas</span></div>
     </div>
-    <div class="pile-block">
+    <div class="pile-block" onclick="openDiscardPopup()">
       <div class="pile-label">Descarte</div>
-      <div class="pile-box"><span class="pile-count" id="ui-disc-count">0</span><span class="pile-sub">cartas</span></div>
+      <div class="pile-box discard-pile-box">
+        <div class="discard-preview" id="ui-discard-preview"></div>
+        <span class="pile-count" id="ui-disc-count">0</span>
+        <span class="pile-sub">cartas</span>
+      </div>
     </div>
     <div class="deck-info-wrap" id="ui-deck-info"></div>
   </div>
@@ -174,6 +178,20 @@
       <div class="pack-deck-title">Seu baralho (<span id="pack-deck-count">0</span> cartas)</div>
       <div class="shop-deck-wrap" id="pack-deck"></div>
     </div>
+  </div>
+</div>
+
+<div id="discard-popup" style="display:none" class="popup-overlay" onclick="closeDiscardPopup(event)">
+  <div class="popup-box" onclick="event.stopPropagation()">
+    <div class="popup-header">
+      <span class="popup-title">Pilha de Descartes</span>
+      <div class="popup-tabs">
+        <button class="popup-tab active" id="tab-type" onclick="setDiscardView('type')">Por tipo</button>
+        <button class="popup-tab" id="tab-order" onclick="setDiscardView('order')">Por ordem</button>
+      </div>
+      <button class="popup-close" onclick="closeDiscardPopup()">✕</button>
+    </div>
+    <div class="popup-content" id="discard-popup-content"></div>
   </div>
 </div>
 
