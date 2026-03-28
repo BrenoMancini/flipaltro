@@ -208,23 +208,101 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .cc-chips { color: var(--blue);   font-weight: 600; }
 
 /* ── SHOP ROWS ── */
-.shop-row {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-}
-
-/* ── SHOP ITEMS (mantém) ── */
 .shop-section-title { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: .1em; margin-bottom: 6px; }
-.shop-item { background: var(--bg2); border: 1px solid var(--border2); border-radius: var(--r2); padding: 10px 12px; cursor: pointer; transition: border-color .15s, background .15s; position: relative; }
-.shop-item:hover { border-color: var(--accent); background: var(--bg3); }
-.shop-item.cant-afford { opacity: .4; cursor: default; pointer-events: none; }
-.shop-item-name { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 3px; }
-.shop-item-desc { font-size: 11px; color: var(--text2); line-height: 1.4; margin-bottom: 6px; }
-.shop-item-cost { font-size: 14px; font-weight: 700; color: var(--accent); font-family: 'DM Mono', monospace; }
-.shop-item-rarity { position: absolute; top: 8px; right: 10px; font-size: 9px; text-transform: uppercase; letter-spacing: .08em; color: var(--text3); }
-.rarity-uncommon .shop-item-rarity { color: var(--blue); }
-.rarity-rare     .shop-item-rarity { color: var(--purple); }
+#shop-row-cards  { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+#shop-row-jokers { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+#shop-row-upgrades { display: flex; flex-direction: column; gap: 8px; }
+
+/* ── SHARED ── */
+.cant-afford { opacity: .4; cursor: default !important; pointer-events: none; }
+
+/* ── PACKS (vertical booster) ── */
+.shop-item-pack {
+  width: 110px; min-height: 160px; border-radius: 12px;
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+  padding: 12px 8px; gap: 6px; cursor: pointer;
+  background: var(--bg2); border: 1px solid var(--border2);
+  transition: transform .15s, border-color .15s;
+}
+.shop-item-pack:hover { transform: translateY(-4px); border-color: var(--accent); }
+.shop-item-pack .item-icon { font-size: 24px; }
+.shop-item-pack .item-name { font-size: 12px; font-weight: 700; color: var(--text); line-height: 1.3; }
+.shop-item-pack .item-desc { font-size: 10px; color: var(--text3); line-height: 1.3; flex: 1; }
+.shop-item-pack .item-footer { display: flex; justify-content: space-between; width: 100%; align-items: center; }
+.shop-item-pack .item-cost { font-size: 13px; font-weight: 700; color: var(--accent); font-family: 'DM Mono', monospace; }
+.shop-item-pack .item-rarity { font-size: 9px; color: var(--text3); text-transform: uppercase; }
+.shop-item-pack.rarity-uncommon { border-color: rgba(90,180,240,0.5); }
+.shop-item-pack.rarity-uncommon .item-rarity { color: var(--blue); }
+.shop-item-pack.rarity-rare { border-color: rgba(168,125,232,0.6); box-shadow: 0 0 10px rgba(168,125,232,0.2); }
+.shop-item-pack.rarity-rare .item-rarity { color: var(--purple); }
+.shop-item-pack-empty { width: 110px; min-height: 160px; border-radius: 12px; border: 1px dashed var(--border); background: var(--bg2); opacity: 0.3; display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--text3); }
+
+/* ── JOKERS (diamond) ── */
+.shop-item-joker-wrap {
+  width: 120px; height: 120px;
+  display: flex; align-items: center; justify-content: center;
+}
+.shop-item-joker {
+  width: 88px; height: 88px;
+  transform: rotate(45deg); border-radius: 8px;
+  background: var(--bg2); border: 1px solid var(--purple);
+  cursor: pointer; transition: transform .15s, border-color .15s, box-shadow .15s;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+.shop-item-joker:hover {
+  transform: rotate(45deg) scale(1.08);
+  border-color: #c9a8f5; box-shadow: 0 0 12px rgba(168,125,232,0.3);
+}
+.shop-item-joker-inner {
+  transform: rotate(-45deg); text-align: center; padding: 4px; width: 80px;
+}
+.shop-item-joker-inner .item-name { font-size: 11px; font-weight: 700; color: var(--purple); }
+.shop-item-joker-inner .item-cost { font-size: 12px; font-weight: 700; color: var(--accent); font-family: 'DM Mono', monospace; margin-top: 4px; }
+.shop-item-joker.rarity-rare { border-color: #a87de8; box-shadow: 0 0 8px rgba(168,125,232,0.2); }
+.shop-item-joker .joker-tooltip-big {
+  display: none; position: absolute; bottom: calc(100% + 8px); left: 50%; transform: rotate(-45deg) translateX(-50%);
+  background: var(--bg3); border: 1px solid var(--purple); border-radius: var(--r2);
+  padding: 10px 14px; width: 200px; z-index: 200; pointer-events: none;
+  box-shadow: 0 4px 20px rgba(0,0,0,.4);
+  text-align: left;
+}
+.shop-item-joker:hover .joker-tooltip-big { display: block; }
+.shop-item-joker .joker-tooltip-big .jt-name { font-size: 12px; font-weight: 700; color: var(--purple); margin-bottom: 4px; }
+.shop-item-joker .joker-tooltip-big .jt-desc { font-size: 10px; color: var(--text2); line-height: 1.4; margin-bottom: 4px; }
+.shop-item-joker .joker-tooltip-big .jt-rarity { font-size: 9px; color: var(--text3); text-transform: uppercase; }
+
+/* ── UPGRADES (voucher/ticket) ── */
+.shop-item-upgrade {
+  width: 100%; padding: 10px 12px 10px 16px; border-radius: 6px;
+  background: var(--bg2); border: 1px solid var(--border2);
+  border-left: 3px dashed var(--accent);
+  display: flex; align-items: center; gap: 10px;
+  cursor: pointer; transition: background .15s, border-color .15s;
+}
+.shop-item-upgrade:hover { background: var(--bg3); border-left-color: #f0c040; }
+.shop-item-upgrade .item-icon { font-size: 16px; flex-shrink: 0; }
+.shop-item-upgrade .item-body { flex: 1; }
+.shop-item-upgrade .item-name { font-size: 12px; font-weight: 700; color: var(--text); }
+.shop-item-upgrade .item-desc { font-size: 10px; color: var(--text2); margin-top: 1px; }
+.shop-item-upgrade .item-cost { font-size: 13px; font-weight: 700; color: var(--accent); font-family: 'DM Mono', monospace; flex-shrink: 0; }
+
+/* ── REMOVE CARD (circle) ── */
+.deck-header-row { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.btn-remove-card {
+  width: 48px; height: 48px; border-radius: 50%;
+  background: var(--bg2); border: 1px solid var(--red);
+  color: var(--red); font-size: 18px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: background .15s, transform .15s;
+  flex-shrink: 0; position: relative;
+}
+.btn-remove-card:hover { background: var(--red-bg); transform: scale(1.1); }
+.btn-remove-card:disabled { opacity: 0.4; cursor: default; pointer-events: none; }
+.remove-cost {
+  position: absolute; bottom: -16px; left: 50%; transform: translateX(-50%);
+  font-size: 9px; color: var(--red); font-family: 'DM Mono', monospace; white-space: nowrap;
+}
 
 /* ── SHOP DECK CARDS ── */
 .shop-deck-wrap { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--r2); padding: 10px; display: flex; flex-wrap: wrap; gap: 5px; }
@@ -627,19 +705,6 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
   80%     { transform: translateX(4px); }
 }
 .shake-no { animation: shakeNo .35s ease; }
-
-/* ── SHOP EMPTY SLOT ── */
-.shop-item-empty {
-  background: var(--bg2);
-  border: 1px dashed var(--border);
-  border-radius: var(--r2);
-  padding: 10px 12px;
-  opacity: 0.3;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 70px;
-}
 
 /* ── PACK OVERLAY ── */
 .pack-overlay {

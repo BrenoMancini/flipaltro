@@ -112,15 +112,15 @@
   </div>
   <div>
     <div class="shop-section-title">Packs</div>
-    <div class="shop-row" id="shop-row-cards"></div>
+    <div id="shop-row-cards"></div>
   </div>
   <div>
     <div class="shop-section-title">Jokers</div>
-    <div class="shop-row" id="shop-row-jokers"></div>
+    <div id="shop-row-jokers"></div>
   </div>
   <div>
     <div class="shop-section-title">Upgrades &amp; Extras</div>
-    <div class="shop-row" id="shop-row-upgrades"></div>
+    <div id="shop-row-upgrades"></div>
   </div>
   <div class="shop-pending" id="shop-pending" style="display:none">
     <div class="shop-pending-text">
@@ -131,16 +131,16 @@
   <div>
     <div class="shop-section-title">
       Seu baralho (<span id="shop-deck-count"></span> cartas)
-      <span style="color:var(--text3);font-weight:400"> — ✦◈◉◌⟡ = edição · ●◆★ = selo</span>
+      <span style="color:var(--text3);font-weight:400"> — ★ = edição · ● = selo</span>
     </div>
-    <div style="margin-bottom:8px;">
-      <button class="btn btn-amber" id="btn-remove-card" onclick="onRemoveCard()">Remover carta — $2</button>
+    <div class="deck-header-row">
+      <button class="btn-remove-card" id="btn-remove-card" onclick="onRemoveCard()">
+        ✕
+        <span class="remove-cost" id="remove-cost-label">$2</span>
+      </button>
     </div>
     <div class="shop-deck-wrap" id="shop-deck"></div>
   </div>
-  <button class="btn btn-primary" onclick="leaveShop()">
-    Continuar para Round <span id="shop-next-round"></span> →
-  </button>
 </div>
 
 <!-- END -->

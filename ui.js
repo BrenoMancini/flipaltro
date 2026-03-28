@@ -325,50 +325,88 @@ function renderShopUI() {
   document.getElementById('shop-score').textContent      = G.roundScore;
   document.getElementById('shop-goal').textContent       = G.goal;
   document.getElementById('shop-deck-count').textContent = G.fullDeck.length;
-  document.getElementById('shop-next-round').textContent = G.round+1;
   const topRnd = document.getElementById('shop-next-round-top');
   if(topRnd) topRnd.textContent = G.round+1;
   renderShopRows(); renderShopDeck(); renderShopJokers();
-  const rmBtn=document.getElementById('btn-remove-card');
-  rmBtn.textContent=`Remover carta — $${G.removeCost}`;
-  rmBtn.disabled=G.money<G.removeCost;
+  updateRemoveBtn();
   document.getElementById('shop-pending').style.display='none';
   document.getElementById('pack-overlay').style.display='none';
   pendingItem=null;
 }
 
-function shopItemHTML(item,rowIdx,itemIdx) {
-  const key=`${rowIdx}_${itemIdx}`;
-  const canAfford=G.money>=item.cost;
-  return `<div class="shop-item ${canAfford?'':'cant-afford'} rarity-${item.rarity}" onclick="clickShopItem('${key}')">
-    <div class="shop-item-name">${item.name}</div>
-    <div class="shop-item-desc">${colorCode(item.desc)}</div>
-    <div class="shop-item-cost">$${item.cost}</div>
-    <div class="shop-item-rarity">${item.rarity}</div>
-  </div>`;
+function updateRemoveBtn() {
+  const btn=document.getElementById('btn-remove-card');
+  if(!btn) return;
+  btn.disabled=G.money<G.removeCost;
+  const lbl=document.getElementById('remove-cost-label');
+  if(lbl) lbl.textContent=`$${G.removeCost}`;
 }
 
 function shopPackHTML(pack,rowIdx,itemIdx) {
   const key=`${rowIdx}_${itemIdx}`;
   const canAfford=G.money>=pack.cost;
   const typeIcons={unico:'🎴',combo:'🔄',classico:'📦'};
-  return `<div class="shop-item shop-pack ${canAfford?'':'cant-afford'} rarity-${pack.rarity}" onclick="clickShopItem('${key}')">
-    <div class="shop-item-name">${typeIcons[pack.packType]||''} ${pack.name}</div>
-    <div class="shop-item-desc">${pack.desc}</div>
-    <div class="shop-item-cost">$${pack.cost}</div>
-    <div class="shop-item-rarity">${pack.rarity}</div>
+  return `<div class="shop-item-pack ${canAfford?'':'cant-afford'} rarity-${pack.rarity}" onclick="clickShopItem('${key}')">
+    <div class="item-icon">${typeIcons[pack.packType]||'📦'}</div>
+    <div class="item-name">${pack.name}</div>
+    <div class="item-desc">${pack.desc}</div>
+    <div class="item-footer">
+      <span class="item-cost">$${pack.cost}</span>
+      <span class="item-rarity">${pack.rarity}</span>
+    </div>
+  </div>`;
+}
+
+function shopJokerHTML(item,rowIdx,itemIdx) {
+  const key=`${rowIdx}_${itemIdx}`;
+  const canAfford=G.money>=item.cost;
+  return `<div class="shop-item-joker-wrap">
+    <div class="shop-item-joker ${canAfford?'':'cant-afford'} rarity-${item.rarity}" onclick="clickShopItem('${key}')">
+      <div class="shop-item-joker-inner">
+        <div class="item-name">${item.name}</div>
+        <div class="item-cost">$${item.cost}</div>
+      </div>
+      <div class="joker-tooltip-big">
+        <div class="jt-name">${item.name}</div>
+        <div class="jt-desc">${colorCode(item.desc)}</div>
+        <div class="jt-rarity">${item.rarity}</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function shopUpgradeHTML(item,rowIdx,itemIdx) {
+  const key=`${rowIdx}_${itemIdx}`;
+  const canAfford=G.money>=item.cost;
+  const edColors={gold:'#e8c84a',gleam:'#5ab4f0',prism:'#a87de8',ghost:'#ffffff',relic:'#4ecb7a',mirror:'#00e5ff'};
+  const sealColors={red:'#e85454',blue:'#5ab4f0',gold:'#e8c84a'};
+  let icon='🏷';
+  if(item.id==='upgrade_chips') icon='💙';
+  else if(item.id==='upgrade_mult') icon='❤️';
+  else if(item.edition) icon=`<span style="color:${edColors[item.edition]}">★</span>`;
+  else if(item.seal)    icon=`<span style="color:${sealColors[item.seal]}">●</span>`;
+  else if(item.type==='special') icon='📦';
+  return `<div class="shop-item-upgrade ${canAfford?'':'cant-afford'}" onclick="clickShopItem('${key}')">
+    <div class="item-icon">${icon}</div>
+    <div class="item-body">
+      <div class="item-name">${item.name}</div>
+      <div class="item-desc">${colorCode(item.desc)}</div>
+    </div>
+    <div class="item-cost">$${item.cost}</div>
   </div>`;
 }
 
 function renderShopRows() {
   const {packRow,jokerRow,upgradeRow}=shopItems;
   document.getElementById('shop-row-cards').innerHTML=packRow.map((it,i)=>{
-    if(!it) return '<div class="shop-item shop-item-empty"><div class="shop-item-name" style="color:var(--text3)">Vazio</div></div>';
+    if(!it) return '<div class="shop-item-pack-empty">Vazio</div>';
     if(it.type==='pack') return shopPackHTML(it,0,i);
-    return shopItemHTML(it,0,i);
+    return shopUpgradeHTML(it,0,i);
   }).join('');
-  document.getElementById('shop-row-jokers').innerHTML=jokerRow.length?jokerRow.map((it,i)=>it?shopItemHTML(it,1,i):'').join(''):'<span class="joker-empty">Sem jokers disponíveis</span>';
-  document.getElementById('shop-row-upgrades').innerHTML=upgradeRow.map((it,i)=>it?shopItemHTML(it,2,i):'').join('');
+  document.getElementById('shop-row-jokers').innerHTML=jokerRow.length
+    ?jokerRow.map((it,i)=>it?shopJokerHTML(it,1,i):'').join('')
+    :'<span class="joker-empty">Sem jokers disponíveis</span>';
+  document.getElementById('shop-row-upgrades').innerHTML=upgradeRow.map((it,i)=>it?shopUpgradeHTML(it,2,i):'').join('');
 }
 
 function deckCardHTML(card, opts={}) {
@@ -415,14 +453,13 @@ function getShopItemByKey(key) {
 
 function updateMoneyDisplay() {
   document.getElementById('shop-money').textContent=`$${G.money}`;
-  document.querySelectorAll('.shop-item,.shop-pack').forEach(el=>{
+  document.querySelectorAll('.shop-item-pack,.shop-item-joker,.shop-item-upgrade').forEach(el=>{
     const m=el.getAttribute('onclick')?.match(/clickShopItem\('([^']+)'\)/);
     if(!m) return;
     const it=getShopItemByKey(m[1]);
     if(it) el.classList.toggle('cant-afford', G.money < it.cost);
   });
-  const btn=document.getElementById('btn-remove-card');
-  if(btn){ btn.disabled=G.money<G.removeCost; btn.textContent=`Remover carta — $${G.removeCost}`; }
+  updateRemoveBtn();
 }
 
 function clickShopItem(key) {
